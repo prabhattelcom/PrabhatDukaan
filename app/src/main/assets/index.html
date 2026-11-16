@@ -63,40 +63,60 @@ const products=[
 {name:"Pulse Candy",price:10,emoji:"🍬"},
 {name:"Dant Kanti",price:60,emoji:"🪥"}
 ];
+
 let cart=[];
+
 function showProducts(){
 let q=document.getElementById("search").value.toLowerCase();
 document.getElementById("products").innerHTML=products
 .filter(p=>p.name.toLowerCase().includes(q))
-.map((p,i)=>`<div class="product">
+.map(p=>`<div class="product">
 <div class="photo">${p.emoji}</div>
 <h4>${p.name}</h4>
 <div class="price">₹${p.price}</div>
 <button onclick="addCart('${p.name}')">कार्ट में जोड़ें</button>
 </div>`).join("");
 }
+
 function addCart(name){
 let p=products.find(x=>x.name===name);
 cart.push(p);
 showCart();
 }
+
 function showCart(){
 document.getElementById("items").innerHTML=cart.length?
 cart.map(p=>p.name+" - ₹"+p.price).join("<br>"):
 "अभी कोई सामान नहीं जोड़ा गया है।";
+
 document.getElementById("total").innerText=
 "कुल: ₹"+cart.reduce((s,p)=>s+p.price,0);
 }
+
 function sendOrder(){
 let name=document.getElementById("customer").value.trim();
 let phone=document.getElementById("phone").value.trim();
-if(!name||!phone||!cart.length){alert("नाम, मोबाइल नंबर और सामान भरें।");return;}
-let msg="Prabhat Telecom Order%0Aनाम: "+encodeURIComponent(name)+
-"%0Aमोबाइल: "+encodeURIComponent(phone)+
-"%0Aसामान:%0A"+encodeURIComponent(cart.map(p=>p.name+" ₹"+p.price).join("\n"))+
-"%0Aकुल: ₹"+cart.reduce((s,p)=>s+p.price,0);
-alert("अभी दुकान का WhatsApp नंबर जोड़ना बाकी है।");
+
+if(!name||!phone||!cart.length){
+alert("नाम, मोबाइल नंबर और सामान भरें।");
+return;
 }
+
+let total=cart.reduce((s,p)=>s+p.price,0);
+
+let message=
+"Prabhat Telecom Order\n"+
+"नाम: "+name+"\n"+
+"मोबाइल: "+phone+"\n"+
+"सामान:\n"+
+cart.map(p=>p.name+" - ₹"+p.price).join("\n")+
+"\nकुल: ₹"+total;
+
+let url="https://wa.me/918858868886?text="+encodeURIComponent(message);
+
+window.location.href=url;
+}
+
 showProducts();
 </script>
 </body>
