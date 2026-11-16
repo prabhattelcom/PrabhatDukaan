@@ -1,0 +1,103 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prabhat Dukaan</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f7f3;font-family:Arial,sans-serif;color:#222}
+header{background:#087b43;color:white;padding:20px 16px;border-radius:0 0 18px 18px}
+header h2{margin:0 0 6px}
+header p{margin:0;font-size:14px}
+.search{padding:14px}
+input{width:100%;padding:13px;border:1px solid #ddd;border-radius:10px;font-size:16px}
+h3{margin:8px 15px}
+.products{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px}
+.product{background:white;border-radius:12px;padding:14px;box-shadow:0 2px 7px #ddd}
+.photo{height:85px;background:#e8f5ec;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:38px}
+.product h4{margin:10px 0 5px}
+.price{color:#087b43;font-weight:bold}
+button{background:#087b43;color:white;border:0;padding:10px;border-radius:8px;font-size:14px}
+.product button{width:100%;margin-top:10px}
+.cart{background:white;margin:14px;padding:15px;border-radius:12px}
+#items{font-size:14px;line-height:1.8}
+footer{text-align:center;padding:20px;color:#666;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<h2>🛍️ Prabhat Dukaan</h2>
+<p>Prabhat Telecom | आपका अपना ऑनलाइन स्टोर</p>
+</header>
+
+<div class="search">
+<input id="search" placeholder="🔍 सामान खोजें..." oninput="showProducts()">
+</div>
+
+<h3>हमारे प्रोडक्ट</h3>
+<div class="products" id="products"></div>
+
+<div class="cart">
+<h3>🛒 आपका ऑर्डर</h3>
+<div id="items">अभी कोई सामान नहीं जोड़ा गया है।</div>
+<h3 id="total">कुल: ₹0</h3>
+<input id="customer" placeholder="अपना नाम लिखें">
+<br><br>
+<input id="phone" placeholder="मोबाइल नंबर लिखें">
+<br><br>
+<button onclick="sendOrder()">WhatsApp पर ऑर्डर भेजें</button>
+</div>
+
+<footer>Prabhat Telecom | Prabhat Dukaan</footer>
+
+<script>
+const products=[
+{name:"Dabur Honey",price:120,emoji:"🍯"},
+{name:"Vatika Shampoo",price:90,emoji:"🧴"},
+{name:"Dettol",price:50,emoji:"🧼"},
+{name:"MamyPoko Pants",price:250,emoji:"👶"},
+{name:"Bajaj Almond Oil",price:75,emoji:"🫙"},
+{name:"Everest Masala",price:45,emoji:"🌶️"},
+{name:"Pulse Candy",price:10,emoji:"🍬"},
+{name:"Dant Kanti",price:60,emoji:"🪥"}
+];
+let cart=[];
+function showProducts(){
+let q=document.getElementById("search").value.toLowerCase();
+document.getElementById("products").innerHTML=products
+.filter(p=>p.name.toLowerCase().includes(q))
+.map((p,i)=>`<div class="product">
+<div class="photo">${p.emoji}</div>
+<h4>${p.name}</h4>
+<div class="price">₹${p.price}</div>
+<button onclick="addCart('${p.name}')">कार्ट में जोड़ें</button>
+</div>`).join("");
+}
+function addCart(name){
+let p=products.find(x=>x.name===name);
+cart.push(p);
+showCart();
+}
+function showCart(){
+document.getElementById("items").innerHTML=cart.length?
+cart.map(p=>p.name+" - ₹"+p.price).join("<br>"):
+"अभी कोई सामान नहीं जोड़ा गया है।";
+document.getElementById("total").innerText=
+"कुल: ₹"+cart.reduce((s,p)=>s+p.price,0);
+}
+function sendOrder(){
+let name=document.getElementById("customer").value.trim();
+let phone=document.getElementById("phone").value.trim();
+if(!name||!phone||!cart.length){alert("नाम, मोबाइल नंबर और सामान भरें।");return;}
+let msg="Prabhat Telecom Order%0Aनाम: "+encodeURIComponent(name)+
+"%0Aमोबाइल: "+encodeURIComponent(phone)+
+"%0Aसामान:%0A"+encodeURIComponent(cart.map(p=>p.name+" ₹"+p.price).join("\n"))+
+"%0Aकुल: ₹"+cart.reduce((s,p)=>s+p.price,0);
+alert("अभी दुकान का WhatsApp नंबर जोड़ना बाकी है।");
+}
+showProducts();
+</script>
+</body>
+</html>
