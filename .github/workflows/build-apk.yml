@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Download project
@@ -38,3 +38,4 @@ jobs:
         with:
           name: Prabhat-Dukaan-APK
           path: app/build/outputs/apk/debug/*.apk
+          retention-days: 7
