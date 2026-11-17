@@ -6,7 +6,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#102d55">
 <title>Prabhat Dukaan - Prabhat Telecom</title>
+<link rel="manifest" href="manifest.json">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f3f5f9;color:#17243a;font-family:Arial,sans-serif}
@@ -17,8 +20,9 @@ main{max-width:850px;margin:auto;padding:12px}
 .card{background:white;padding:15px;border-radius:13px;margin:12px 0;box-shadow:0 2px 8px #0001}
 h3{margin-top:5px}
 input{width:100%;padding:12px;border:1px solid #ccd3df;border-radius:8px;margin:6px 0;font-size:16px}
-button{border:0;border-radius:8px;background:#145ba0;color:white;padding:11px 14px;margin:4px;font-weight:bold}
-button.green{background:#16804a}
+button,.linkbtn{display:inline-block;border:0;border-radius:8px;background:#145ba0;color:white;padding:11px 14px;margin:4px;font-weight:bold;text-decoration:none;cursor:pointer}
+button.green,.linkbtn.green{background:#16804a}
+button.orange{background:#c36a13}
 button:disabled{opacity:.5}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .product{background:white;border:1px solid #e3e7ee;border-radius:11px;padding:10px;min-width:0}
@@ -29,18 +33,40 @@ button:disabled{opacity:.5}
 .small{font-size:13px;color:#667085}
 .item{padding:10px 0;border-bottom:1px solid #eee}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.hidden{display:none}
+.hidden{display:none!important}
 #message{padding:10px;color:#145ba0}
 footer{text-align:center;padding:20px;color:#777;font-size:13px}
+#invoicePrintArea{background:white;color:#111;padding:18px;max-width:700px;margin:10px auto}
+.invoice-head{text-align:center;border-bottom:1px dashed #777;padding-bottom:10px}
+.invoice-head h2{margin:4px 0}
+.invoice-meta{font-size:13px;line-height:1.7;margin:10px 0}
+.invoice-table{width:100%;border-collapse:collapse;font-size:13px}
+.invoice-table th,.invoice-table td{border-bottom:1px solid #ddd;padding:7px 3px;text-align:left}
+.invoice-table th:last-child,.invoice-table td:last-child{text-align:right}
+.invoice-total{text-align:right;font-weight:bold;font-size:17px;margin-top:12px}
+.invoice-foot{text-align:center;font-size:12px;margin-top:20px;border-top:1px dashed #777;padding-top:10px}
 @media(min-width:650px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media print{
+ body{background:white!important}
+ body *{visibility:hidden!important}
+ #invoicePrintArea,#invoicePrintArea *{visibility:visible!important}
+ #invoicePrintArea{position:absolute;left:0;top:0;margin:0 auto;box-shadow:none!important}
+ body.print-thermal #invoicePrintArea{width:54mm!important;max-width:54mm!important;padding:2mm!important;font-size:11px!important}
+ body.print-thermal .invoice-table{font-size:10px!important}
+ body.print-thermal .invoice-table th,body.print-thermal .invoice-table td{padding:3px 1px!important}
+ body.print-a4 #invoicePrintArea{width:190mm!important;max-width:190mm!important;padding:10mm!important}
+}
+@page{margin:5mm}
 </style>
 </head>
+
 <body>
 <header>
  <div class="logo">PT</div>
  <h2>Prabhat Dukaan</h2>
  <div>Prabhat Telecom</div>
  <p>आपकी अपनी ऑनलाइन दुकान</p>
+ <button id="installBtn" class="green hidden" onclick="installApp()">ऐप इंस्टॉल करें</button>
 </header>
 
 <main>
@@ -54,7 +80,7 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
  <div class="card">
   <h3>🛒 आपका कार्ट</h3>
   <div id="cart">अभी कार्ट खाली है।</div>
-  <h3 id="cartTotal">कुल: ₹0</h3>
+  <h3 id="cartTotal">कुल: ₹0.00</h3>
   <button class="green" onclick="checkout()">ऑर्डर करें</button>
  </div>
 
@@ -64,6 +90,17 @@ footer{text-align:center;padding:20px;color:#777;font-size:13px}
   <input id="customerMobile" type="tel" inputmode="numeric" maxlength="10" placeholder="10 अंकों का मोबाइल नंबर">
   <button class="green" id="placeBtn" onclick="placeOrder()">ऑर्डर पक्का करें</button>
   <p id="orderMessage"></p>
+  <a id="waOrderLink" class="linkbtn green hidden" target="_blank" rel="noopener">WhatsApp पर ऑर्डर भेजें</a>
+ </div>
+
+ <div class="card hidden" id="invoiceBox">
+  <h3>🧾 आपका बिल तैयार है</h3>
+  <div id="invoicePrintArea"></div>
+  <button class="green" onclick="downloadInvoicePDF()">PDF डाउनलोड करें</button>
+  <button onclick="shareInvoicePDF()">PDF WhatsApp पर शेयर करें</button>
+  <button class="orange" onclick="printInvoice('a4')">A4 प्रिंट निकालें</button>
+  <button class="orange" onclick="printInvoice('thermal')">2-inch बिल प्रिंट करें</button>
+  <button onclick="shareInvoiceText()">बिल का मैसेज WhatsApp करें</button>
  </div>
 
  <div class="card">
@@ -85,13 +122,15 @@ const WHATSAPP="918858868886";
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let products=[];
 let cart={};
+let lastInvoice=null;
+let deferredPrompt=null;
 
 const $=id=>document.getElementById(id);
 const money=n=>"₹"+Number(n||0).toFixed(2);
 
 function safe(s){
  return String(s??"").replace(/[&<>"']/g,c=>({
- "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
  }[c]));
 }
 
@@ -115,26 +154,23 @@ async function loadProducts(){
 
 function showProducts(){
  const term=$("search").value.trim().toLowerCase();
- const list=products.filter(p=>
-  String(p.name).toLowerCase().includes(term)
- );
+ const list=products.filter(p=>String(p.name).toLowerCase().includes(term));
  $("products").innerHTML=list.map(p=>`
   <div class="product">
    ${p.image_url?`<img src="${safe(p.image_url)}" alt="${safe(p.name)}">`:
    `<div style="height:145px;display:grid;place-items:center;background:#f8f9fb">फोटो उपलब्ध नहीं</div>`}
    <h4>${safe(p.name)}</h4>
    <div class="price">${money(p.selling_price)}</div>
-   ${Number(p.mrp)>Number(p.selling_price)?
-   `<div class="mrp">MRP ${money(p.mrp)}</div>`:""}
+   ${Number(p.mrp)>Number(p.selling_price)?`<div class="mrp">MRP ${money(p.mrp)}</div>`:""}
    <p class="small">${safe(p.description||"")}</p>
    <p class="small">स्टॉक: ${p.stock}</p>
-   <button onclick="addCart(${p.id})">कार्ट में डालें</button>
+   <button onclick="addCart(${Number(p.id)})">कार्ट में डालें</button>
   </div>
  `).join("")||"कोई सामान नहीं मिला।";
 }
 
 function addCart(id){
- const p=products.find(x=>String(x.id)===String(id));
+ const p=products.find(x=>Number(x.id)===Number(id));
  if(!p)return;
  const qty=cart[id]||0;
  if(qty>=Number(p.stock)){alert("इतना स्टॉक उपलब्ध नहीं है");return;}
@@ -143,7 +179,7 @@ function addCart(id){
 }
 
 function changeQty(id,amount){
- const p=products.find(x=>String(x.id)===String(id));
+ const p=products.find(x=>Number(x.id)===Number(id));
  if(!p)return;
  const next=(cart[id]||0)+amount;
  if(next<=0)delete cart[id];
@@ -154,7 +190,7 @@ function changeQty(id,amount){
 
 function getTotal(){
  return Object.entries(cart).reduce((sum,[id,qty])=>{
-  const p=products.find(x=>String(x.id)===String(id));
+  const p=products.find(x=>Number(x.id)===Number(id));
   return sum+(p?Number(p.selling_price)*qty:0);
  },0);
 }
@@ -165,13 +201,13 @@ function showCart(){
   $("cart").textContent="अभी कार्ट खाली है।";
  }else{
   $("cart").innerHTML=entries.map(([id,qty])=>{
-   const p=products.find(x=>String(x.id)===String(id));
+   const p=products.find(x=>Number(x.id)===Number(id));
    if(!p)return "";
    return `<div class="item">
     <div class="row"><b>${safe(p.name)}</b><b>${money(p.selling_price*qty)}</b></div>
-    <button onclick="changeQty(${p.id},-1)">−</button>
+    <button onclick="changeQty(${Number(p.id)},-1)">−</button>
     ${qty}
-    <button onclick="changeQty(${p.id},1)">+</button>
+    <button onclick="changeQty(${Number(p.id)},1)">+</button>
    </div>`;
   }).join("");
  }
@@ -187,6 +223,7 @@ function checkout(){
 async function placeOrder(){
  const name=$("customerName").value.trim();
  const mobile=$("customerMobile").value.trim();
+
  if(!name){alert("अपना नाम लिखें");return;}
  if(!/^[0-9]{10}$/.test(mobile)){alert("सही 10 अंकों का मोबाइल नंबर लिखें");return;}
  if(!Object.keys(cart).length){alert("कार्ट खाली है");return;}
@@ -194,26 +231,51 @@ async function placeOrder(){
  const btn=$("placeBtn");
  btn.disabled=true;
  $("orderMessage").textContent="आपका ऑर्डर सेव हो रहा है...";
+ $("waOrderLink").classList.add("hidden");
+
  try{
-  const items=Object.entries(cart).map(([id,quantity])=>({
-   product_id:Number(id),quantity
+  const invoiceItems=Object.entries(cart).map(([id,quantity])=>{
+   const p=products.find(x=>Number(x.id)===Number(id));
+   return {
+    product_id:Number(id),
+    name:p?p.name:"सामान",
+    price:p?Number(p.selling_price):0,
+    quantity:Number(quantity)
+   };
+  });
+
+  const rpcItems=invoiceItems.map(i=>({
+   product_id:i.product_id,
+   quantity:i.quantity
   }));
+
   const {data,error}=await db.rpc("place_order",{
    p_customer_name:name,
    p_customer_mobile:mobile,
-   p_items:items
+   p_items:rpcItems
   });
   if(error)throw error;
+
   const result=Array.isArray(data)?data[0]:data;
   if(!result||!result.success||!result.order_id)
    throw new Error("ऑर्डर की पुष्टि नहीं मिली।");
 
   const orderId=result.order_id;
   const total=Number(result.total_amount||getTotal());
-  const lines=items.map(i=>{
-   const p=products.find(x=>Number(x.id)===i.product_id);
-   return (p?p.name:"सामान")+" x "+i.quantity;
-  });
+
+  lastInvoice={
+   orderId,
+   name,
+   mobile,
+   items:invoiceItems,
+   total,
+   date:new Date().toLocaleString("en-IN")
+  };
+
+  const lines=invoiceItems.map(i=>
+   i.name+" x "+i.quantity+" = "+money(i.price*i.quantity)
+  );
+
   const msg=
    "नया ऑर्डर - Prabhat Dukaan\n"+
    "Order ID: "+orderId+"\n"+
@@ -225,12 +287,20 @@ async function placeOrder(){
   $("orderMessage").innerHTML=
    "ऑर्डर सफल! आपका Order ID है: <b>"+safe(orderId)+
    "</b><br>कुल: "+money(total)+
-   "<br>इस ID को संभालकर रखें।<br>"+
-   `<button onclick="openWhatsApp(${JSON.stringify(msg).replace(/</g,"\\u003c")})">WhatsApp पर ऑर्डर भेजें</button>`;
+   "<br>बिल नीचे तैयार है। WhatsApp बटन दबाकर ऑर्डर भेजें।";
+
+  $("waOrderLink").href=
+   "https://wa.me/"+WHATSAPP+"?text="+encodeURIComponent(msg);
+  $("waOrderLink").classList.remove("hidden");
+
+  makeInvoice();
+  $("invoiceBox").classList.remove("hidden");
 
   cart={};
   showCart();
   await loadProducts();
+
+  $("invoiceBox").scrollIntoView({behavior:"smooth"});
  }catch(e){
   $("orderMessage").textContent="ऑर्डर नहीं हुआ: "+e.message;
  }finally{
@@ -238,9 +308,102 @@ async function placeOrder(){
  }
 }
 
-function openWhatsApp(msg){
- const url="https://wa.me/"+WHATSAPP+"?text="+encodeURIComponent(msg);
- window.open(url,"_blank");
+function makeInvoice(){
+ if(!lastInvoice)return;
+ const b=lastInvoice;
+
+ const rows=b.items.map((i,index)=>`
+  <tr>
+   <td>${index+1}. ${safe(i.name)}</td>
+   <td>${i.quantity}</td>
+   <td>${money(i.price)}</td>
+   <td>${money(i.price*i.quantity)}</td>
+  </tr>
+ `).join("");
+
+ $("invoicePrintArea").innerHTML=`
+  <div class="invoice-head">
+   <h2>PRABHAT TELECOM</h2>
+   <div>Prabhat Dukaan</div>
+   <b>बिक्री बिल / INVOICE</b>
+  </div>
+  <div class="invoice-meta">
+   <b>बिल नंबर:</b> ${safe(b.orderId)}<br>
+   <b>दिनांक:</b> ${safe(b.date)}<br>
+   <b>ग्राहक:</b> ${safe(b.name)}<br>
+   <b>मोबाइल:</b> ${safe(b.mobile)}
+  </div>
+  <table class="invoice-table">
+   <thead>
+    <tr><th>सामान</th><th>Qty</th><th>Rate</th><th>रकम</th></tr>
+   </thead>
+   <tbody>${rows}</tbody>
+  </table>
+  <div class="invoice-total">कुल राशि: ${money(b.total)}</div>
+  <div class="invoice-foot">Prabhat Telecom में खरीदारी के लिए धन्यवाद।</div>
+ `;
+}
+
+function invoiceFileName(){
+ return "Prabhat-Dukaan-Bill-"+(lastInvoice?lastInvoice.orderId:"order")+".pdf";
+}
+
+function pdfOptions(){
+ return {
+  margin:5,
+  filename:invoiceFileName(),
+  image:{type:"jpeg",quality:0.98},
+  html2canvas:{scale:2,useCORS:true},
+  jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}
+ };
+}
+
+async function downloadInvoicePDF(){
+ if(!lastInvoice)return;
+ if(!window.html2pdf){alert("PDF सुविधा लोड नहीं हुई। प्रिंट विकल्प इस्तेमाल करें।");return;}
+ try{
+  await html2pdf().set(pdfOptions()).from($("invoicePrintArea")).save();
+ }catch(e){
+  alert("PDF नहीं बन पाया: "+e.message);
+ }
+}
+
+async function shareInvoicePDF(){
+ if(!lastInvoice)return;
+ if(!window.html2pdf){alert("PDF सुविधा लोड नहीं हुई। पहले PDF डाउनलोड करें।");return;}
+ try{
+  const blob=await html2pdf().set(pdfOptions()).from($("invoicePrintArea")).outputPdf("blob");
+  const file=new File([blob],invoiceFileName(),{type:"application/pdf"});
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+   await navigator.share({title:"Prabhat Dukaan Bill",files:[file]});
+  }else{
+   await html2pdf().set(pdfOptions()).from($("invoicePrintArea")).save();
+   alert("PDF डाउनलोड हो गया। अब WhatsApp में इसे अटैच करके भेज सकते हैं।");
+  }
+ }catch(e){
+  alert("शेयर नहीं हो पाया। PDF डाउनलोड करके WhatsApp पर भेजें।");
+ }
+}
+
+function printInvoice(type){
+ if(!lastInvoice)return;
+ document.body.classList.remove("print-a4","print-thermal");
+ document.body.classList.add(type==="thermal"?"print-thermal":"print-a4");
+ window.print();
+}
+
+function shareInvoiceText(){
+ if(!lastInvoice)return;
+ const b=lastInvoice;
+ const lines=b.items.map(i=>i.name+" x "+i.quantity+" = "+money(i.price*i.quantity));
+ const msg=
+  "Prabhat Dukaan Bill\n"+
+  "Bill No: "+b.orderId+"\n"+
+  "Customer: "+b.name+"\n"+
+  "Mobile: "+b.mobile+"\n"+
+  lines.join("\n")+
+  "\nTotal: "+money(b.total);
+ window.open("https://wa.me/"+WHATSAPP+"?text="+encodeURIComponent(msg),"_blank");
 }
 
 async function trackOrder(){
@@ -267,6 +430,30 @@ async function trackOrder(){
  }catch(e){
   $("trackResult").textContent="ट्रैकिंग में समस्या: "+e.message;
  }
+}
+
+/* ऐप इंस्टॉल */
+window.addEventListener("beforeinstallprompt",event=>{
+ event.preventDefault();
+ deferredPrompt=event;
+ $("installBtn").classList.remove("hidden");
+});
+
+async function installApp(){
+ if(!deferredPrompt){
+  alert("Chrome के ऊपर तीन डॉट दबाएँ और Add to Home screen चुनें।");
+  return;
+ }
+ deferredPrompt.prompt();
+ await deferredPrompt.userChoice;
+ deferredPrompt=null;
+ $("installBtn").classList.add("hidden");
+}
+
+if("serviceWorker" in navigator){
+ window.addEventListener("load",()=>{
+  navigator.serviceWorker.register("./sw.js").catch(()=>{});
+ });
 }
 
 loadProducts();
