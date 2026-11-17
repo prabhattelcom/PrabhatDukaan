@@ -5,28 +5,82 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Prabhat Dukaan Admin</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 <style>
+*{box-sizing:border-box}
 body{font-family:Arial;background:#f1f4f9;margin:0;color:#17243a}
 header{background:#102d55;color:white;text-align:center;padding:22px}
-main{max-width:650px;margin:auto;padding:14px}
+main{max-width:700px;margin:auto;padding:14px}
 .card{background:white;padding:17px;margin:14px 0;border-radius:12px}
-input,textarea{width:100%;box-sizing:border-box;padding:13px;margin:7px 0;border:1px solid #bbb;border-radius:8px;font-size:16px}
-button{padding:12px 17px;background:#145ba0;color:white;border:0;border-radius:8px;margin:5px;cursor:pointer}
-.green{background:#16804a}.red{background:#b72d32}
+input,textarea{width:100%;padding:13px;margin:7px 0;border:1px solid #bbb;border-radius:8px;font-size:16px}
+button{padding:12px 15px;background:#145ba0;color:white;border:0;border-radius:8px;margin:5px;cursor:pointer}
+button:disabled{opacity:.5}
+.green{background:#16804a}
+.red{background:#b72d32}
+.orange{background:#b76a0c}
+.purple{background:#653a9b}
 .hidden{display:none}
 .item{padding:12px 0;border-bottom:1px solid #ddd}
 img{max-width:130px;max-height:130px;display:block;margin:8px}
+.bill-paper{background:white;color:#111;padding:22px;width:100%;max-width:720px;margin:auto}
+.bill-head{text-align:center;border-bottom:2px solid #222;padding-bottom:10px}
+.bill-head h2{margin:5px}
+.bill-info{margin:15px 0;line-height:1.8}
+.bill-table{width:100%;border-collapse:collapse;font-size:14px}
+.bill-table th,.bill-table td{border:1px solid #aaa;padding:7px;text-align:left}
+.bill-total{text-align:right;font-size:18px;font-weight:bold;margin-top:15px}
+.bill-foot{text-align:center;margin-top:25px;border-top:1px dashed #777;padding-top:12px}
+#thermalRender{
+position:fixed;
+left:-10000px;
+top:0;
+width:384px;
+background:white;
+color:black;
+padding:10px;
+font-family:Arial,sans-serif;
+}
+#thermalRender .bill-paper{
+width:364px;
+max-width:364px;
+padding:5px;
+}
+#thermalRender .bill-table{font-size:11px}
+#thermalRender .bill-table th,
+#thermalRender .bill-table td{padding:4px}
+#thermalRender .bill-info{font-size:12px;line-height:1.5}
+#thermalRender .bill-head h2{font-size:19px}
+#thermalRender .bill-head h3{font-size:15px}
+#thermalRender .bill-total{font-size:15px}
+#thermalRender .bill-foot{font-size:12px}
+
+@media print{
+@page{size:A4;margin:10mm}
+body *{visibility:hidden!important}
+#billArea,#billArea *{visibility:visible!important}
+#billArea{display:block!important;position:absolute;left:0;top:0;width:100%;margin:0}
+#billPaper{width:100%;max-width:100%;padding:5px}
+.no-print{display:none!important}
+}
 </style>
 </head>
+
 <body>
+
 <header>
 <h1>PT</h1>
 <h2>Prabhat Dukaan</h2>
 Prabhat Telecom Admin
 </header>
+
 <main>
+
 <div id="error" class="card" style="color:#b72d32"></div>
+
 <section id="login" class="card">
 <h3>Admin Login</h3>
 <input id="email" type="email" value="prbhtm@gmail.com" placeholder="Email">
@@ -36,6 +90,7 @@ Prabhat Telecom Admin
 </section>
 
 <section id="dashboard" class="hidden">
+
 <div class="card">
 <h3>Admin Dashboard</h3>
 <p id="welcome"></p>
@@ -66,164 +121,641 @@ Prabhat Telecom Admin
 <h3>ग्राहकों के ऑर्डर</h3>
 <div id="orderList"></div>
 </div>
+
+<div class="card">
+<h3>ग्राहक का बिल</h3>
+<p id="billMsg">किसी ऑर्डर के बिल बनाएँ बटन को दबाएँ।</p>
+
+<div id="billActions" class="hidden no-print">
+<button class="green" onclick="downloadBillPDF()">PDF डाउनलोड</button>
+<button onclick="shareBillPDF()">PDF शेयर</button>
+<button class="orange" onclick="shareBillWhatsApp()">WhatsApp भेजें</button>
+<button onclick="printBillA4()">A4 प्रिंट</button>
+<button class="purple" onclick="bluetoothPrint()">Bluetooth Print 🖨️</button>
+</div>
+
+<div id="billArea" class="hidden"></div>
+</div>
+
 </section>
 </main>
 
+<div id="thermalRender"></div>
+
 <script>
+
 const SUPABASE_URL="https://zbsmdnccdpidksgavtxl.supabase.co";
 const SUPABASE_KEY="sb_publishable_jIxfhg8WH0x0XH3edKOA5Q_jAFQl1v2";
 const ADMIN_EMAIL="prbhtm@gmail.com";
+
 let db=null;
+let currentBill=null;
 
-function message(id,msg){document.getElementById(id).textContent=msg;}
-
-try{
- if(!window.supabase){
-  throw new Error("Supabase इंटरनेट से लोड नहीं हुआ। इंटरनेट चालू करके ऐप खोलें।");
- }
- db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
- message("error","");
-}catch(e){
- message("error","ऐप की समस्या: "+e.message);
-}
-
-async function loginAdmin(){
- if(!db){message("loginMsg","Supabase कनेक्शन उपलब्ध नहीं है।");return;}
- const btn=document.getElementById("loginBtn");
- btn.disabled=true;
- message("loginMsg","लॉगिन हो रहा है...");
- try{
-  const email=document.getElementById("email").value.trim();
-  const password=document.getElementById("password").value;
-  if(email.toLowerCase()!==ADMIN_EMAIL){throw new Error("Admin Email गलत है");}
-  if(!password){throw new Error("पासवर्ड डालिए");}
-  const {data,error}=await db.auth.signInWithPassword({email,password});
-  if(error)throw error;
-  if(data.user.email.toLowerCase()!==ADMIN_EMAIL)throw new Error("यह Admin अकाउंट नहीं है");
-  showDashboard();
- }catch(e){
-  message("loginMsg","Login Error: "+e.message);
- }finally{
-  btn.disabled=false;
- }
-}
-
-function showDashboard(){
- document.getElementById("login").classList.add("hidden");
- document.getElementById("dashboard").classList.remove("hidden");
- message("welcome","लॉगिन सफल: "+ADMIN_EMAIL);
- loadAll();
-}
-
-async function checkSession(){
- if(!db)return;
- try{
-  const {data,error}=await db.auth.getSession();
-  if(error)throw error;
-  if(data.session?.user?.email?.toLowerCase()===ADMIN_EMAIL)showDashboard();
- }catch(e){message("error","कनेक्शन समस्या: "+e.message);}
-}
-
-async function logout(){
- await db.auth.signOut();
- document.getElementById("dashboard").classList.add("hidden");
- document.getElementById("login").classList.remove("hidden");
- message("loginMsg","आप लॉगआउट हो गए हैं।");
-}
-
-document.getElementById("photo").addEventListener("change",function(){
- const file=this.files[0];
- if(file){
-  document.getElementById("preview").src=URL.createObjectURL(file);
-  document.getElementById("preview").classList.remove("hidden");
- }
-});
-
-async function saveProduct(){
- try{
-  const name=document.getElementById("pname").value.trim();
-  const mrp=Number(document.getElementById("mrp").value);
-  const selling_price=Number(document.getElementById("price").value);
-  const stock=Number(document.getElementById("stock").value);
-  const description=document.getElementById("desc").value.trim();
-  const file=document.getElementById("photo").files[0];
-  if(!name||mrp<=0||selling_price<=0||stock<0)throw new Error("सभी जानकारी सही भरें");
-  let image_url=null;
-  if(file){
-   if(file.size>5*1024*1024)throw new Error("फोटो 5 MB से छोटी रखें");
-   const ext=(file.name.split(".").pop()||"jpg").replace(/[^a-z0-9]/gi,"");
-   const path=Date.now()+"."+ext;
-   const {error}=await db.storage.from("product-images").upload(path,file);
-   if(error)throw error;
-   image_url=db.storage.from("product-images").getPublicUrl(path).data.publicUrl;
-  }
-  message("productMsg","सेव हो रहा है...");
-  const {error}=await db.from("products").insert({
-   name,mrp,selling_price,stock,description,image_url,active:true
-  });
-  if(error)throw error;
-  message("productMsg","सामान सफलतापूर्वक सेव हो गया");
-  ["pname","mrp","price","stock","desc","photo"].forEach(id=>document.getElementById(id).value="");
-  document.getElementById("preview").classList.add("hidden");
-  loadAll();
- }catch(e){message("productMsg","समस्या: "+e.message);}
-}
-
-async function loadAll(){
- await loadProducts();
- await loadOrders();
-}
-
-async function loadProducts(){
- const box=document.getElementById("productList");
- box.textContent="लोड हो रहा है...";
- const {data,error}=await db.from("products").select("*").order("created_at",{ascending:false});
- if(error){box.textContent=error.message;return;}
- box.innerHTML=(data||[]).map(p=>`
- <div class="item">
- <b>${escapeHTML(p.name)}</b><br>
- MRP ₹${p.mrp} | बिक्री ₹${p.selling_price}<br>
- स्टॉक: ${p.stock}<br>
- ${p.image_url?`<img src="${escapeHTML(p.image_url)}">`:""}
- <button onclick="toggleProduct(${p.id},${!p.active})">${p.active?"छिपाएँ":"दिखाएँ"}</button>
- </div>`).join("")||"कोई सामान नहीं है";
-}
-
-async function toggleProduct(id,active){
- const {error}=await db.from("products").update({active}).eq("id",id);
- if(error)alert(error.message);
- loadProducts();
-}
-
-async function loadOrders(){
- const box=document.getElementById("orderList");
- box.textContent="लोड हो रहा है...";
- const {data,error}=await db.from("orders").select("*").order("created_at",{ascending:false});
- if(error){box.textContent=error.message;return;}
- box.innerHTML=(data||[]).map(o=>`
- <div class="item">
- <b>ऑर्डर #${o.id}</b>
- <p>ग्राहक: ${escapeHTML(o.customer_name)}</p>
- <p>मोबाइल: ${escapeHTML(o.customer_mobile)}</p>
- <p>कुल: ₹${o.total_amount}</p>
- <p>स्थिति: ${escapeHTML(o.status)}</p>
- <button onclick="setStatus(${o.id},'confirmed')">स्वीकार करें</button>
- <button class="green" onclick="setStatus(${o.id},'delivered')">डिलीवर</button>
- <button class="red" onclick="setStatus(${o.id},'cancelled')">रद्द करें</button>
- </div>`).join("")||"अभी कोई ऑर्डर नहीं है";
-}
-
-async function setStatus(id,status){
- const {error}=await db.from("orders").update({status}).eq("id",id);
- if(error){alert(error.message);return;}
- loadOrders();
+function message(id,msg){
+document.getElementById(id).textContent=msg;
 }
 
 function escapeHTML(s){
- return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+return String(s??"").replace(/[&<>"']/g,c=>({
+"&":"&amp;",
+"<":"&lt;",
+">":"&gt;",
+'"':"&quot;",
+"'":"&#39;"
+}[c]));
+}
+
+function money(v){
+return "₹"+Number(v||0).toFixed(2);
+}
+
+try{
+if(!window.supabase){
+throw new Error("Supabase इंटरनेट से लोड नहीं हुआ।");
+}
+db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+message("error","");
+}catch(e){
+message("error",e.message);
+}
+
+// ADMIN LOGIN
+
+async function loginAdmin(){
+
+if(!db)return;
+
+const btn=document.getElementById("loginBtn");
+btn.disabled=true;
+message("loginMsg","लॉगिन हो रहा है...");
+
+try{
+
+const email=document.getElementById("email").value.trim();
+const password=document.getElementById("password").value;
+
+if(email.toLowerCase()!==ADMIN_EMAIL){
+throw new Error("Admin Email गलत है");
+}
+
+if(!password){
+throw new Error("पासवर्ड डालिए");
+}
+
+const {data,error}=await db.auth.signInWithPassword({
+email,password
+});
+
+if(error)throw error;
+
+if(data.user.email.toLowerCase()!==ADMIN_EMAIL){
+throw new Error("Admin अकाउंट सही नहीं है");
+}
+
+showDashboard();
+
+}catch(e){
+message("loginMsg","Login Error: "+e.message);
+}finally{
+btn.disabled=false;
+}
+}
+
+function showDashboard(){
+
+document.getElementById("login").classList.add("hidden");
+document.getElementById("dashboard").classList.remove("hidden");
+
+message("welcome","लॉगिन सफल: "+ADMIN_EMAIL);
+
+loadAll();
+}
+
+async function checkSession(){
+
+if(!db)return;
+
+try{
+
+const {data,error}=await db.auth.getSession();
+
+if(error)throw error;
+
+if(data.session?.user?.email?.toLowerCase()===ADMIN_EMAIL){
+showDashboard();
+}
+
+}catch(e){
+message("error",e.message);
+}
+}
+
+async function logout(){
+
+await db.auth.signOut();
+
+document.getElementById("dashboard").classList.add("hidden");
+document.getElementById("login").classList.remove("hidden");
+
+message("loginMsg","आप लॉगआउट हो गए हैं।");
+}
+
+// GALLERY
+
+document.getElementById("photo").addEventListener("change",function(){
+
+const file=this.files[0];
+
+if(file){
+
+document.getElementById("preview").src=URL.createObjectURL(file);
+document.getElementById("preview").classList.remove("hidden");
+
+}
+});
+
+// SAVE PRODUCT
+
+async function saveProduct(){
+
+try{
+
+const name=document.getElementById("pname").value.trim();
+const mrp=Number(document.getElementById("mrp").value);
+const selling_price=Number(document.getElementById("price").value);
+const stock=Number(document.getElementById("stock").value);
+const description=document.getElementById("desc").value.trim();
+const file=document.getElementById("photo").files[0];
+
+if(!name||mrp<=0||selling_price<=0||stock<0){
+throw new Error("सभी जानकारी सही भरें");
+}
+
+let image_url=null;
+
+if(file){
+
+if(file.size>5*1024*1024){
+throw new Error("फोटो 5 MB से छोटी रखें");
+}
+
+const ext=(file.name.split(".").pop()||"jpg").replace(/[^a-z0-9]/gi,"");
+const path=Date.now()+"."+ext;
+
+const {error}=await db.storage.from("product-images").upload(path,file);
+
+if(error)throw error;
+
+image_url=db.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+
+}
+
+message("productMsg","सेव हो रहा है...");
+
+const {error}=await db.from("products").insert({
+name,mrp,selling_price,stock,description,image_url,active:true
+});
+
+if(error)throw error;
+
+message("productMsg","सामान सफलतापूर्वक सेव हो गया");
+
+["pname","mrp","price","stock","desc","photo"].forEach(id=>{
+document.getElementById(id).value="";
+});
+
+document.getElementById("preview").classList.add("hidden");
+
+loadAll();
+
+}catch(e){
+message("productMsg","समस्या: "+e.message);
+}
+}
+
+// LOAD DATA
+
+async function loadAll(){
+
+await loadProducts();
+await loadOrders();
+
+}
+
+async function loadProducts(){
+
+const box=document.getElementById("productList");
+
+box.textContent="लोड हो रहा है...";
+
+const {data,error}=await db.from("products")
+.select("*")
+.order("created_at",{ascending:false});
+
+if(error){
+box.textContent=error.message;
+return;
+}
+
+box.innerHTML=(data||[]).map(p=>`
+
+<div class="item">
+
+<b>${escapeHTML(p.name)}</b><br>
+
+MRP ${money(p.mrp)} |
+बिक्री ${money(p.selling_price)}<br>
+
+स्टॉक: ${p.stock}<br>
+
+${p.image_url?`<img src="${escapeHTML(p.image_url)}">`:""}
+
+<button onclick="toggleProduct(${p.id},${!p.active})">
+${p.active?"छिपाएँ":"दिखाएँ"}
+</button>
+
+</div>
+
+`).join("")||"कोई सामान नहीं है";
+
+}
+
+async function toggleProduct(id,active){
+
+const {error}=await db.from("products")
+.update({active})
+.eq("id",id);
+
+if(error){
+alert(error.message);
+return;
+}
+
+loadProducts();
+
+}
+
+// LOAD ORDERS
+
+async function loadOrders(){
+
+const box=document.getElementById("orderList");
+
+box.textContent="लोड हो रहा है...";
+
+const {data,error}=await db.from("orders")
+.select("*")
+.order("created_at",{ascending:false});
+
+if(error){
+box.textContent=error.message;
+return;
+}
+
+box.innerHTML=(data||[]).map(o=>`
+
+<div class="item">
+
+<b>ऑर्डर #${o.id}</b>
+
+<p>ग्राहक: ${escapeHTML(o.customer_name)}</p>
+<p>मोबाइल: ${escapeHTML(o.customer_mobile)}</p>
+<p>कुल: ${money(o.total_amount)}</p>
+<p>स्थिति: ${escapeHTML(o.status)}</p>
+
+<button class="orange" onclick="makeBill(${o.id})">
+बिल बनाएँ
+</button>
+
+<button onclick="setStatus(${o.id},'confirmed')">
+स्वीकार करें
+</button>
+
+<button class="green" onclick="setStatus(${o.id},'delivered')">
+डिलीवर
+</button>
+
+<button class="red" onclick="setStatus(${o.id},'cancelled')">
+रद्द करें
+</button>
+
+</div>
+
+`).join("")||"अभी कोई ऑर्डर नहीं है";
+
+}
+
+async function setStatus(id,status){
+
+const {error}=await db.from("orders")
+.update({status})
+.eq("id",id);
+
+if(error){
+alert(error.message);
+return;
+}
+
+loadOrders();
+
+}
+
+// CREATE BILL
+
+function billMarkup(order,items){
+
+const date=order.created_at
+?new Date(order.created_at).toLocaleString("en-IN")
+:new Date().toLocaleString("en-IN");
+
+const rows=items.map((it,i)=>`
+
+<tr>
+<td>${i+1}</td>
+<td>${escapeHTML(it.product_name)}</td>
+<td>${Number(it.quantity)||0}</td>
+<td>${money(it.price)}</td>
+<td>${money(Number(it.quantity)*Number(it.price))}</td>
+</tr>
+
+`).join("");
+
+return `
+
+<div class="bill-paper" id="billPaper">
+
+<div class="bill-head">
+
+<h2>PRABHAT TELECOM</h2>
+<h3>PRABHAT DUKAAN</h3>
+<p>ग्राहक बिक्री बिल</p>
+
+</div>
+
+<div class="bill-info">
+
+<b>बिल नंबर:</b> ${order.id}<br>
+<b>दिनांक:</b> ${escapeHTML(date)}<br>
+<b>ग्राहक:</b> ${escapeHTML(order.customer_name)}<br>
+<b>मोबाइल:</b> ${escapeHTML(order.customer_mobile)}
+
+</div>
+
+<table class="bill-table">
+
+<thead>
+<tr>
+<th>क्र.</th>
+<th>सामान</th>
+<th>मात्रा</th>
+<th>कीमत</th>
+<th>कुल</th>
+</tr>
+</thead>
+
+<tbody>
+${rows}
+</tbody>
+
+</table>
+
+<div class="bill-total">
+कुल राशि: ${money(order.total_amount)}
+</div>
+
+<div class="bill-foot">
+<b>Prabhat Telecom</b><br>
+धन्यवाद! फिर से पधारें।
+</div>
+
+</div>
+
+`;
+
+}
+
+async function makeBill(orderId){
+
+try{
+
+message("billMsg","बिल तैयार हो रहा है...");
+
+document.getElementById("billArea").classList.add("hidden");
+document.getElementById("billActions").classList.add("hidden");
+
+const {data:order,error:orderError}=await db
+.from("orders")
+.select("*")
+.eq("id",orderId)
+.single();
+
+if(orderError)throw orderError;
+
+const {data:items,error:itemError}=await db
+.from("order_items")
+.select("*")
+.eq("order_id",orderId);
+
+if(itemError)throw itemError;
+
+if(!items||items.length===0){
+throw new Error("इस ऑर्डर का सामान नहीं मिला");
+}
+
+currentBill={order,items};
+
+document.getElementById("billArea").innerHTML=
+billMarkup(order,items);
+
+document.getElementById("thermalRender").innerHTML=
+billMarkup(order,items);
+
+document.getElementById("billArea").classList.remove("hidden");
+document.getElementById("billActions").classList.remove("hidden");
+
+message("billMsg","बिल तैयार है। अब प्रिंट या PDF चुनें।");
+
+document.getElementById("billArea").scrollIntoView({
+behavior:"smooth"
+});
+
+}catch(e){
+
+message("billMsg","बिल समस्या: "+e.message);
+
+}
+
+}
+
+// PDF DOWNLOAD
+
+async function downloadBillPDF(){
+
+try{
+
+if(!currentBill)throw new Error("पहले बिल बनाएँ");
+
+if(!window.html2pdf)throw new Error("PDF सुविधा लोड नहीं हुई");
+
+await html2pdf()
+.set({
+margin:5,
+filename:"Prabhat-Bill-"+currentBill.order.id+".pdf",
+image:{type:"jpeg",quality:0.98},
+html2canvas:{scale:2,useCORS:true},
+jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}
+})
+.from(document.getElementById("billPaper"))
+.save();
+
+}catch(e){
+alert("PDF समस्या: "+e.message);
+}
+
+}
+
+// SHARE PDF
+
+async function shareBillPDF(){
+
+try{
+
+if(!currentBill)throw new Error("पहले बिल बनाएँ");
+
+const blob=await html2pdf()
+.set({
+margin:5,
+filename:"Prabhat-Bill-"+currentBill.order.id+".pdf",
+html2canvas:{scale:2,useCORS:true},
+jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}
+})
+.from(document.getElementById("billPaper"))
+.outputPdf("blob");
+
+const file=new File(
+[blob],
+"Prabhat-Bill-"+currentBill.order.id+".pdf",
+{type:"application/pdf"}
+);
+
+if(navigator.canShare&&navigator.canShare({files:[file]})){
+
+await navigator.share({
+files:[file],
+title:"Prabhat Telecom Bill"
+});
+
+}else{
+
+await downloadBillPDF();
+
+}
+
+}catch(e){
+alert("PDF शेयर समस्या: "+e.message);
+}
+
+}
+
+// WHATSAPP BILL
+
+function shareBillWhatsApp(){
+
+if(!currentBill){
+alert("पहले बिल बनाएँ");
+return;
+}
+
+const o=currentBill.order;
+
+const phone=String(o.customer_mobile||"").replace(/\D/g,"");
+
+const lines=currentBill.items.map(it=>
+it.product_name+" x "+it.quantity+" = "+
+money(Number(it.price)*Number(it.quantity))
+);
+
+const text=
+"Prabhat Telecom - Prabhat Dukaan\n"+
+"बिल नंबर: "+o.id+"\n"+
+"ग्राहक: "+o.customer_name+"\n"+
+lines.join("\n")+"\n"+
+"कुल राशि: "+money(o.total_amount)+"\n"+
+"धन्यवाद!";
+
+window.location.href=
+"https://wa.me/91"+phone+"?text="+encodeURIComponent(text);
+
+}
+
+// A4 PRINT
+
+function printBillA4(){
+
+if(!currentBill){
+alert("पहले बिल बनाएँ");
+return;
+}
+
+window.print();
+
+}
+
+// BLUETOOTH DIRECT PRINT
+
+async function bluetoothPrint(){
+
+try{
+
+if(!currentBill){
+throw new Error("पहले बिल बनाएँ");
+}
+
+if(!window.AndroidPrinter||
+typeof AndroidPrinter.printImage!=="function"){
+
+throw new Error(
+"Bluetooth सुविधा इस ऐप में उपलब्ध नहीं है। नया APK बनाकर इंस्टॉल करें।"
+);
+
+}
+
+if(!window.html2canvas){
+throw new Error("इमेज प्रिंट सुविधा लोड नहीं हुई। इंटरनेट चालू करें।");
+}
+
+message("billMsg","Bluetooth प्रिंटर के लिए बिल तैयार हो रहा है...");
+
+const element=document.getElementById("thermalRender");
+
+const canvas=await html2canvas(element,{
+backgroundColor:"#ffffff",
+scale:1,
+width:384,
+windowWidth:384,
+useCORS:true,
+logging:false
+});
+
+const imageData=canvas.toDataURL("image/png");
+
+// Android Kotlin Bluetooth bridge
+AndroidPrinter.printImage(imageData);
+
+message("billMsg","प्रिंटर चुनने के लिए मोबाइल पर सूची देखें।");
+
+}catch(e){
+
+message("billMsg","Bluetooth समस्या: "+e.message);
+alert("Bluetooth Print: "+e.message);
+
+}
+
 }
 
 checkSession();
+
 </script>
+
 </body>
 </html>
