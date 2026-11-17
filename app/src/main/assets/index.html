@@ -3,38 +3,35 @@
 <html lang="hi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Prabhat Dukaan Admin</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#f1f4f9;font-family:Arial;color:#182238}
-header{background:#102d55;color:white;padding:20px;text-align:center}
-.logo{width:76px;height:76px;border:3px solid #d8ad48;border-radius:50%;display:grid;place-items:center;margin:auto auto 8px;font-size:30px;font-weight:bold;color:#f4ce72}
-main{max-width:800px;margin:auto;padding:14px}
-.card{background:white;padding:16px;border-radius:13px;margin:13px 0;box-shadow:0 2px 8px #0001}
-input,textarea{width:100%;padding:12px;margin:7px 0;border:1px solid #ccd3df;border-radius:8px;font-size:16px}
-button{padding:11px 15px;border:0;border-radius:8px;background:#145ba0;color:white;font-weight:bold;margin:5px 3px}
-button.red{background:#b72d32}
-button.green{background:#16804a}
+body{font-family:Arial;background:#f1f4f9;margin:0;color:#17243a}
+header{background:#102d55;color:white;text-align:center;padding:22px}
+main{max-width:650px;margin:auto;padding:14px}
+.card{background:white;padding:17px;margin:14px 0;border-radius:12px}
+input,textarea{width:100%;box-sizing:border-box;padding:13px;margin:7px 0;border:1px solid #bbb;border-radius:8px;font-size:16px}
+button{padding:12px 17px;background:#145ba0;color:white;border:0;border-radius:8px;margin:5px;cursor:pointer}
+.green{background:#16804a}.red{background:#b72d32}
 .hidden{display:none}
-img.preview{max-width:150px;max-height:150px;object-fit:contain;display:block;margin:10px 0}
-.item{border-bottom:1px solid #ddd;padding:12px 0}
-.small{color:#667085;font-size:13px}
+.item{padding:12px 0;border-bottom:1px solid #ddd}
+img{max-width:130px;max-height:130px;display:block;margin:8px}
 </style>
 </head>
 <body>
 <header>
-<div class="logo">PT</div>
+<h1>PT</h1>
 <h2>Prabhat Dukaan</h2>
-<p>Prabhat Telecom – Admin Panel</p>
+Prabhat Telecom Admin
 </header>
 <main>
+<div id="error" class="card" style="color:#b72d32"></div>
 <section id="login" class="card">
 <h3>Admin Login</h3>
 <input id="email" type="email" value="prbhtm@gmail.com" placeholder="Email">
-<input id="password" type="password" placeholder="Admin Password">
-<button onclick="loginAdmin()">लॉगिन करें</button>
+<input id="password" type="password" placeholder="Password">
+<button id="loginBtn" onclick="loginAdmin()">Login करें</button>
 <p id="loginMsg"></p>
 </section>
 
@@ -42,8 +39,8 @@ img.preview{max-width:150px;max-height:150px;object-fit:contain;display:block;ma
 <div class="card">
 <h3>Admin Dashboard</h3>
 <p id="welcome"></p>
-<button onclick="loadAll()">रिफ्रेश करें</button>
-<button class="red" onclick="logout()">लॉगआउट</button>
+<button onclick="loadAll()">Refresh</button>
+<button class="red" onclick="logout()">Logout</button>
 </div>
 
 <div class="card">
@@ -53,111 +50,143 @@ img.preview{max-width:150px;max-height:150px;object-fit:contain;display:block;ma
 <input id="price" type="number" placeholder="बिक्री मूल्य">
 <input id="stock" type="number" placeholder="स्टॉक">
 <textarea id="desc" placeholder="सामान की जानकारी"></textarea>
-<label><b>Gallery से फोटो चुनें</b></label>
+<p>Gallery से फोटो चुनें</p>
 <input id="photo" type="file" accept="image/*">
-<img id="preview" class="preview hidden">
+<img id="preview" class="hidden">
 <button class="green" onclick="saveProduct()">सामान सेव करें</button>
 <p id="productMsg"></p>
 </div>
 
 <div class="card">
-<h3>आपके प्रोडक्ट</h3>
-<div id="productList">लोड हो रहा है...</div>
+<h3>प्रोडक्ट सूची</h3>
+<div id="productList"></div>
 </div>
 
 <div class="card">
 <h3>ग्राहकों के ऑर्डर</h3>
-<div id="orderList">लोड हो रहा है...</div>
+<div id="orderList"></div>
 </div>
 </section>
 </main>
 
 <script>
-const URL="https://zbsmdnccdpidksgavtxl.supabase.co";
-const KEY="sb_publishable_jIxfhg8WH0x0XH3edKOA5Q_jAFQl1v2";
-const ADMIN="prbhtm@gmail.com";
-const db=window.supabase.createClient(URL,KEY);
+const SUPABASE_URL="https://zbsmdnccdpidksgavtxl.supabase.co";
+const SUPABASE_KEY="sb_publishable_jIxfhg8WH0x0XH3edKOA5Q_jAFQl1v2";
+const ADMIN_EMAIL="prbhtm@gmail.com";
+let db=null;
 
-const el=id=>document.getElementById(id);
-const safe=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const rupees=n=>"₹"+Number(n||0).toFixed(2);
+function message(id,msg){document.getElementById(id).textContent=msg;}
 
-el("photo").addEventListener("change",()=>{
- const f=el("photo").files[0];
- if(!f)return;
- el("preview").src=URL.createObjectURL(f);
- el("preview").classList.remove("hidden");
-});
+try{
+ if(!window.supabase){
+  throw new Error("Supabase इंटरनेट से लोड नहीं हुआ। इंटरनेट चालू करके ऐप खोलें।");
+ }
+ db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+ message("error","");
+}catch(e){
+ message("error","ऐप की समस्या: "+e.message);
+}
 
 async function loginAdmin(){
- el("loginMsg").textContent="लॉगिन हो रहा है...";
- const email=el("email").value.trim();
- if(email.toLowerCase()!==ADMIN){el("loginMsg").textContent="Admin Email गलत है";return}
- const {data,error}=await db.auth.signInWithPassword({email,password:el("password").value});
- if(error){el("loginMsg").textContent=error.message;return}
- await checkLogin();
-}
-
-async function checkLogin(){
- const {data}=await db.auth.getSession();
- const user=data.session?.user;
- if(user?.email?.toLowerCase()===ADMIN){
-  el("login").classList.add("hidden");
-  el("dashboard").classList.remove("hidden");
-  el("welcome").textContent="लॉगिन: "+user.email;
-  loadAll();
- }else{
-  el("login").classList.remove("hidden");
-  el("dashboard").classList.add("hidden");
+ if(!db){message("loginMsg","Supabase कनेक्शन उपलब्ध नहीं है।");return;}
+ const btn=document.getElementById("loginBtn");
+ btn.disabled=true;
+ message("loginMsg","लॉगिन हो रहा है...");
+ try{
+  const email=document.getElementById("email").value.trim();
+  const password=document.getElementById("password").value;
+  if(email.toLowerCase()!==ADMIN_EMAIL){throw new Error("Admin Email गलत है");}
+  if(!password){throw new Error("पासवर्ड डालिए");}
+  const {data,error}=await db.auth.signInWithPassword({email,password});
+  if(error)throw error;
+  if(data.user.email.toLowerCase()!==ADMIN_EMAIL)throw new Error("यह Admin अकाउंट नहीं है");
+  showDashboard();
+ }catch(e){
+  message("loginMsg","Login Error: "+e.message);
+ }finally{
+  btn.disabled=false;
  }
 }
 
-async function logout(){await db.auth.signOut();checkLogin()}
-
-async function saveProduct(){
- const name=el("pname").value.trim();
- const mrp=Number(el("mrp").value);
- const selling_price=Number(el("price").value);
- const stock=Number(el("stock").value);
- const description=el("desc").value.trim();
- const file=el("photo").files[0];
- if(!name||mrp<=0||selling_price<=0||stock<0){
-  el("productMsg").textContent="नाम, MRP, बिक्री मूल्य और स्टॉक सही भरें";return;
- }
- let image_url=null;
- if(file){
-  if(file.size>5*1024*1024){el("productMsg").textContent="फोटो 5 MB से छोटी रखें";return}
-  const ext=(file.name.split(".").pop()||"jpg").replace(/[^a-zA-Z0-9]/g,"");
-  const path=Date.now()+"-"+Math.random().toString(36).slice(2)+"."+ext;
-  const {error:upError}=await db.storage.from("product-images").upload(path,file,{upsert:false});
-  if(upError){el("productMsg").textContent="फोटो अपलोड नहीं हुई: "+upError.message;return}
-  image_url=db.storage.from("product-images").getPublicUrl(path).data.publicUrl;
- }
- el("productMsg").textContent="सेव हो रहा है...";
- const {error}=await db.from("products").insert({
-  name,description,image_url,mrp,selling_price,stock,active:true
- });
- if(error){el("productMsg").textContent="सेव नहीं हुआ: "+error.message;return}
- el("productMsg").textContent="सामान सफलतापूर्वक सेव हो गया";
- ["pname","mrp","price","stock","desc","photo"].forEach(id=>el(id).value="");
- el("preview").classList.add("hidden");
+function showDashboard(){
+ document.getElementById("login").classList.add("hidden");
+ document.getElementById("dashboard").classList.remove("hidden");
+ message("welcome","लॉगिन सफल: "+ADMIN_EMAIL);
  loadAll();
 }
 
-async function loadAll(){await loadProducts();await loadOrders()}
+async function checkSession(){
+ if(!db)return;
+ try{
+  const {data,error}=await db.auth.getSession();
+  if(error)throw error;
+  if(data.session?.user?.email?.toLowerCase()===ADMIN_EMAIL)showDashboard();
+ }catch(e){message("error","कनेक्शन समस्या: "+e.message);}
+}
+
+async function logout(){
+ await db.auth.signOut();
+ document.getElementById("dashboard").classList.add("hidden");
+ document.getElementById("login").classList.remove("hidden");
+ message("loginMsg","आप लॉगआउट हो गए हैं।");
+}
+
+document.getElementById("photo").addEventListener("change",function(){
+ const file=this.files[0];
+ if(file){
+  document.getElementById("preview").src=URL.createObjectURL(file);
+  document.getElementById("preview").classList.remove("hidden");
+ }
+});
+
+async function saveProduct(){
+ try{
+  const name=document.getElementById("pname").value.trim();
+  const mrp=Number(document.getElementById("mrp").value);
+  const selling_price=Number(document.getElementById("price").value);
+  const stock=Number(document.getElementById("stock").value);
+  const description=document.getElementById("desc").value.trim();
+  const file=document.getElementById("photo").files[0];
+  if(!name||mrp<=0||selling_price<=0||stock<0)throw new Error("सभी जानकारी सही भरें");
+  let image_url=null;
+  if(file){
+   if(file.size>5*1024*1024)throw new Error("फोटो 5 MB से छोटी रखें");
+   const ext=(file.name.split(".").pop()||"jpg").replace(/[^a-z0-9]/gi,"");
+   const path=Date.now()+"."+ext;
+   const {error}=await db.storage.from("product-images").upload(path,file);
+   if(error)throw error;
+   image_url=db.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+  }
+  message("productMsg","सेव हो रहा है...");
+  const {error}=await db.from("products").insert({
+   name,mrp,selling_price,stock,description,image_url,active:true
+  });
+  if(error)throw error;
+  message("productMsg","सामान सफलतापूर्वक सेव हो गया");
+  ["pname","mrp","price","stock","desc","photo"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("preview").classList.add("hidden");
+  loadAll();
+ }catch(e){message("productMsg","समस्या: "+e.message);}
+}
+
+async function loadAll(){
+ await loadProducts();
+ await loadOrders();
+}
 
 async function loadProducts(){
- const box=el("productList");
+ const box=document.getElementById("productList");
+ box.textContent="लोड हो रहा है...";
  const {data,error}=await db.from("products").select("*").order("created_at",{ascending:false});
- if(error){box.textContent=error.message;return}
+ if(error){box.textContent=error.message;return;}
  box.innerHTML=(data||[]).map(p=>`
  <div class="item">
- ${p.image_url?`<img class="preview" src="${safe(p.image_url)}">`:""}
- <b>${safe(p.name)}</b><br>
- MRP: ${rupees(p.mrp)} | बिक्री: ${rupees(p.selling_price)}<br>
- स्टॉक: ${p.stock} | ${p.active?"दिख रहा है":"छिपा हुआ"}<br>
- <button onclick="toggleProduct(${p.id},${!p.active})">${p.active?"दुकान से छिपाएँ":"दुकान में दिखाएँ"}</button>
- </div>`).join("")||"अभी कोई सामान नहीं है";
+ <b>${escapeHTML(p.name)}</b><br>
+ MRP ₹${p.mrp} | बिक्री ₹${p.selling_price}<br>
+ स्टॉक: ${p.stock}<br>
+ ${p.image_url?`<img src="${escapeHTML(p.image_url)}">`:""}
+ <button onclick="toggleProduct(${p.id},${!p.active})">${p.active?"छिपाएँ":"दिखाएँ"}</button>
+ </div>`).join("")||"कोई सामान नहीं है";
 }
 
 async function toggleProduct(id,active){
@@ -167,16 +196,17 @@ async function toggleProduct(id,active){
 }
 
 async function loadOrders(){
- const box=el("orderList");
+ const box=document.getElementById("orderList");
+ box.textContent="लोड हो रहा है...";
  const {data,error}=await db.from("orders").select("*").order("created_at",{ascending:false});
- if(error){box.textContent=error.message;return}
+ if(error){box.textContent=error.message;return;}
  box.innerHTML=(data||[]).map(o=>`
  <div class="item">
- <b>ऑर्डर #${safe(o.id)}</b>
- <p>ग्राहक: ${safe(o.customer_name)}</p>
- <p>मोबाइल: ${safe(o.customer_mobile)}</p>
- <p>कुल: ${rupees(o.total_amount)}</p>
- <p>स्थिति: ${safe(o.status)}</p>
+ <b>ऑर्डर #${o.id}</b>
+ <p>ग्राहक: ${escapeHTML(o.customer_name)}</p>
+ <p>मोबाइल: ${escapeHTML(o.customer_mobile)}</p>
+ <p>कुल: ₹${o.total_amount}</p>
+ <p>स्थिति: ${escapeHTML(o.status)}</p>
  <button onclick="setStatus(${o.id},'confirmed')">स्वीकार करें</button>
  <button class="green" onclick="setStatus(${o.id},'delivered')">डिलीवर</button>
  <button class="red" onclick="setStatus(${o.id},'cancelled')">रद्द करें</button>
@@ -185,12 +215,15 @@ async function loadOrders(){
 
 async function setStatus(id,status){
  const {error}=await db.from("orders").update({status}).eq("id",id);
- if(error){alert(error.message);return}
+ if(error){alert(error.message);return;}
  loadOrders();
 }
 
-db.auth.onAuthStateChange(()=>checkLogin());
-checkLogin();
+function escapeHTML(s){
+ return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+checkSession();
 </script>
 </body>
 </html>
