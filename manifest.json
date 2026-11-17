@@ -9,5 +9,13 @@
   "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#123456",
-  "lang": "hi"
+  "lang": "hi",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
 }
