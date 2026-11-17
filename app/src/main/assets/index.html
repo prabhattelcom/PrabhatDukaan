@@ -3,292 +3,194 @@
 <html lang="hi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prabhat Dukaan - Prabhat Telecom</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prabhat Dukaan Admin</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f3f5f9;color:#222}
-header{background:#123d70;color:white;padding:18px;text-align:center}
-header h1{margin:0;font-size:25px}
-header p{margin:6px 0 0}
-nav{display:flex;gap:8px;justify-content:center;padding:12px;background:white;flex-wrap:wrap}
-button{border:0;border-radius:7px;padding:11px 15px;background:#1264ad;color:white;font-weight:bold;cursor:pointer}
-button:disabled{opacity:.5}
-input,textarea{width:100%;padding:12px;margin:7px 0;border:1px solid #ccc;border-radius:7px;font-size:15px}
-main{max-width:950px;margin:auto;padding:15px}
-.panel{background:white;padding:15px;border-radius:12px;margin:12px 0;box-shadow:0 2px 8px #0001}
-.products{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px}
-.product{background:white;padding:10px;border-radius:10px;box-shadow:0 2px 8px #0001}
-.product img{width:100%;height:125px;object-fit:contain;background:#f7f7f7}
-.price{color:#087a39;font-weight:bold;font-size:18px}
-.old{color:#888;text-decoration:line-through;font-size:13px}
+body{margin:0;background:#f1f4f9;font-family:Arial;color:#182238}
+header{background:#102d55;color:white;padding:20px;text-align:center}
+.logo{width:76px;height:76px;border:3px solid #d8ad48;border-radius:50%;display:grid;place-items:center;margin:auto auto 8px;font-size:30px;font-weight:bold;color:#f4ce72}
+main{max-width:800px;margin:auto;padding:14px}
+.card{background:white;padding:16px;border-radius:13px;margin:13px 0;box-shadow:0 2px 8px #0001}
+input,textarea{width:100%;padding:12px;margin:7px 0;border:1px solid #ccd3df;border-radius:8px;font-size:16px}
+button{padding:11px 15px;border:0;border-radius:8px;background:#145ba0;color:white;font-weight:bold;margin:5px 3px}
+button.red{background:#b72d32}
+button.green{background:#16804a}
 .hidden{display:none}
-.small{font-size:13px;color:#666}
-h2{font-size:20px}
+img.preview{max-width:150px;max-height:150px;object-fit:contain;display:block;margin:10px 0}
+.item{border-bottom:1px solid #ddd;padding:12px 0}
+.small{color:#667085;font-size:13px}
 </style>
 </head>
 <body>
 <header>
-<h1>🛍️ Prabhat Dukaan</h1>
-<p>Prabhat Telecom | आपका अपना ऑनलाइन स्टोर</p>
+<div class="logo">PT</div>
+<h2>Prabhat Dukaan</h2>
+<p>Prabhat Telecom – Admin Panel</p>
 </header>
-
-<nav>
-<button onclick="showPage('shop')">दुकान</button>
-<button onclick="showPage('cart')">🛒 कार्ट (<span id="cartCount">0</span>)</button>
-<button onclick="showPage('admin')">Admin Login</button>
-</nav>
-
 <main>
-<section id="shop">
-<div class="panel">
-<h2>हमारे प्रोडक्ट</h2>
-<p class="small">अपनी पसंद का सामान चुनें और ऑर्डर करें।</p>
-</div>
-<div id="products" class="products">सामान लोड हो रहा है...</div>
+<section id="login" class="card">
+<h3>Admin Login</h3>
+<input id="email" type="email" value="prbhtm@gmail.com" placeholder="Email">
+<input id="password" type="password" placeholder="Admin Password">
+<button onclick="loginAdmin()">लॉगिन करें</button>
+<p id="loginMsg"></p>
 </section>
 
-<section id="cart" class="hidden">
-<div class="panel">
-<h2>आपका कार्ट</h2>
-<div id="cartItems"></div>
-<h3 id="cartTotal">कुल: ₹0</h3>
-<h3>ऑर्डर करने के लिए जानकारी भरें</h3>
-<input id="customerName" placeholder="आपका नाम">
-<input id="customerMobile" placeholder="मोबाइल नंबर" inputmode="numeric">
-<button onclick="placeOrder()">ऑर्डर भेजें</button>
-</div>
-</section>
-
-<section id="admin" class="hidden">
-<div class="panel" id="loginBox">
-<h2>Admin Login</h2>
-<input id="adminEmail" type="email" placeholder="Admin Email" value="prbhtm@gmail.com">
-<input id="adminPassword" type="password" placeholder="Admin Password">
-<button onclick="adminLogin()">लॉगिन करें</button>
-<p id="loginMessage"></p>
+<section id="dashboard" class="hidden">
+<div class="card">
+<h3>Admin Dashboard</h3>
+<p id="welcome"></p>
+<button onclick="loadAll()">रिफ्रेश करें</button>
+<button class="red" onclick="logout()">लॉगआउट</button>
 </div>
 
-<div class="hidden" id="adminPanel">
-<div class="panel">
-<h2>Admin Dashboard</h2>
-<p id="adminWelcome"></p>
-<button onclick="loadAdmin()">रिफ्रेश करें</button>
-<button onclick="adminLogout()">लॉगआउट</button>
+<div class="card">
+<h3>नया सामान जोड़ें</h3>
+<input id="pname" placeholder="सामान का नाम">
+<input id="mrp" type="number" placeholder="MRP">
+<input id="price" type="number" placeholder="बिक्री मूल्य">
+<input id="stock" type="number" placeholder="स्टॉक">
+<textarea id="desc" placeholder="सामान की जानकारी"></textarea>
+<label><b>Gallery से फोटो चुनें</b></label>
+<input id="photo" type="file" accept="image/*">
+<img id="preview" class="preview hidden">
+<button class="green" onclick="saveProduct()">सामान सेव करें</button>
+<p id="productMsg"></p>
 </div>
 
-<div class="panel">
-<h2>नया सामान जोड़ें</h2>
-<input id="pName" placeholder="प्रोडक्ट का नाम">
-<input id="pMrp" type="number" placeholder="MRP कीमत">
-<input id="pPrice" type="number" placeholder="बिक्री कीमत">
-<input id="pStock" type="number" placeholder="स्टॉक संख्या">
-<input id="pImage" placeholder="फोटो का URL (वैकल्पिक)">
-<textarea id="pDescription" placeholder="प्रोडक्ट की जानकारी"></textarea>
-<button onclick="addProduct()">सामान सेव करें</button>
-<p id="productMessage"></p>
+<div class="card">
+<h3>आपके प्रोडक्ट</h3>
+<div id="productList">लोड हो रहा है...</div>
 </div>
 
-<div class="panel">
-<h2>आपके प्रोडक्ट</h2>
-<div id="adminProducts"></div>
-</div>
-
-<div class="panel">
-<h2>ग्राहकों के ऑर्डर</h2>
-<div id="adminOrders"></div>
-</div>
+<div class="card">
+<h3>ग्राहकों के ऑर्डर</h3>
+<div id="orderList">लोड हो रहा है...</div>
 </div>
 </section>
 </main>
 
 <script>
-const SUPABASE_URL = "https://zbsmdnccdpidksgavtxl.supabase.co";
-const SUPABASE_KEY = "sb_publishable_jIxfhg8WH0x0XH3edKOA5Q_jAFQl1v2";
-const ADMIN_EMAIL = "prbhtm@gmail.com";
-const WHATSAPP_NUMBER = "918858868886";
+const URL="https://zbsmdnccdpidksgavtxl.supabase.co";
+const KEY="sb_publishable_jIxfhg8WH0x0XH3edKOA5Q_jAFQl1v2";
+const ADMIN="prbhtm@gmail.com";
+const db=window.supabase.createClient(URL,KEY);
 
-const db = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let products = [];
-let cart = [];
+const el=id=>document.getElementById(id);
+const safe=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const rupees=n=>"₹"+Number(n||0).toFixed(2);
 
-function showPage(page){
-["shop","cart","admin"].forEach(id=>{
-document.getElementById(id).classList.toggle("hidden",id!==page);
+el("photo").addEventListener("change",()=>{
+ const f=el("photo").files[0];
+ if(!f)return;
+ el("preview").src=URL.createObjectURL(f);
+ el("preview").classList.remove("hidden");
 });
-if(page==="cart") renderCart();
-if(page==="admin") checkAdmin();
+
+async function loginAdmin(){
+ el("loginMsg").textContent="लॉगिन हो रहा है...";
+ const email=el("email").value.trim();
+ if(email.toLowerCase()!==ADMIN){el("loginMsg").textContent="Admin Email गलत है";return}
+ const {data,error}=await db.auth.signInWithPassword({email,password:el("password").value});
+ if(error){el("loginMsg").textContent=error.message;return}
+ await checkLogin();
 }
 
-function money(n){return "₹"+Number(n||0).toFixed(2)}
+async function checkLogin(){
+ const {data}=await db.auth.getSession();
+ const user=data.session?.user;
+ if(user?.email?.toLowerCase()===ADMIN){
+  el("login").classList.add("hidden");
+  el("dashboard").classList.remove("hidden");
+  el("welcome").textContent="लॉगिन: "+user.email;
+  loadAll();
+ }else{
+  el("login").classList.remove("hidden");
+  el("dashboard").classList.add("hidden");
+ }
+}
+
+async function logout(){await db.auth.signOut();checkLogin()}
+
+async function saveProduct(){
+ const name=el("pname").value.trim();
+ const mrp=Number(el("mrp").value);
+ const selling_price=Number(el("price").value);
+ const stock=Number(el("stock").value);
+ const description=el("desc").value.trim();
+ const file=el("photo").files[0];
+ if(!name||mrp<=0||selling_price<=0||stock<0){
+  el("productMsg").textContent="नाम, MRP, बिक्री मूल्य और स्टॉक सही भरें";return;
+ }
+ let image_url=null;
+ if(file){
+  if(file.size>5*1024*1024){el("productMsg").textContent="फोटो 5 MB से छोटी रखें";return}
+  const ext=(file.name.split(".").pop()||"jpg").replace(/[^a-zA-Z0-9]/g,"");
+  const path=Date.now()+"-"+Math.random().toString(36).slice(2)+"."+ext;
+  const {error:upError}=await db.storage.from("product-images").upload(path,file,{upsert:false});
+  if(upError){el("productMsg").textContent="फोटो अपलोड नहीं हुई: "+upError.message;return}
+  image_url=db.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+ }
+ el("productMsg").textContent="सेव हो रहा है...";
+ const {error}=await db.from("products").insert({
+  name,description,image_url,mrp,selling_price,stock,active:true
+ });
+ if(error){el("productMsg").textContent="सेव नहीं हुआ: "+error.message;return}
+ el("productMsg").textContent="सामान सफलतापूर्वक सेव हो गया";
+ ["pname","mrp","price","stock","desc","photo"].forEach(id=>el(id).value="");
+ el("preview").classList.add("hidden");
+ loadAll();
+}
+
+async function loadAll(){await loadProducts();await loadOrders()}
 
 async function loadProducts(){
-const box=document.getElementById("products");
-const {data,error}=await db.from("products").select("*").eq("is_active",true).order("created_at",{ascending:false});
-if(error){box.innerHTML="प्रोडक्ट लोड नहीं हुए: "+error.message;return}
-products=data||[];
-if(!products.length){box.innerHTML="अभी कोई सामान उपलब्ध नहीं है।";return}
-box.innerHTML=products.map(p=>`
-<div class="product">
-<img src="${safe(p.image_url||"")}" onerror="this.style.display='none'">
-<h3>${safe(p.name)}</h3>
-<p class="small">${safe(p.description||"")}</p>
-<div class="old">${money(p.mrp)}</div>
-<div class="price">${money(p.price)}</div>
-<p class="small">स्टॉक: ${Number(p.stock||0)}</p>
-<button onclick="addCart('${p.id}')">कार्ट में डालें</button>
-</div>`).join("");
-}
-
-function safe(value){
-return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-
-function addCart(id){
-const p=products.find(x=>String(x.id)===String(id));
-if(!p)return;
-if(Number(p.stock)<=0){alert("यह सामान अभी स्टॉक में नहीं है");return}
-const old=cart.find(x=>String(x.id)===String(id));
-if(old){if(old.qty>=Number(p.stock)){alert("इतना स्टॉक उपलब्ध नहीं है");return}old.qty++}
-else cart.push({id:p.id,name:p.name,price:Number(p.price),qty:1});
-renderCart();
-alert("सामान कार्ट में जुड़ गया");
-}
-
-function renderCart(){
-document.getElementById("cartCount").textContent=cart.reduce((s,x)=>s+x.qty,0);
-const box=document.getElementById("cartItems");
-if(!cart.length){box.innerHTML="आपका कार्ट खाली है";document.getElementById("cartTotal").textContent="कुल: ₹0";return}
-box.innerHTML=cart.map((x,i)=>`
-<div class="panel">
-<b>${safe(x.name)}</b><br>${money(x.price)} × ${x.qty}
-<button onclick="changeQty(${i},-1)">−</button>
-<button onclick="changeQty(${i},1)">+</button>
-<button onclick="removeItem(${i})">हटाएँ</button>
-</div>`).join("");
-const total=cart.reduce((s,x)=>s+x.price*x.qty,0);
-document.getElementById("cartTotal").textContent="कुल: "+money(total);
-}
-
-function changeQty(i,n){
-if(!cart[i])return;
-const p=products.find(x=>String(x.id)===String(cart[i].id));
-cart[i].qty+=n;
-if(cart[i].qty<=0)cart.splice(i,1);
-else if(p&&cart[i].qty>Number(p.stock)){cart[i].qty=Number(p.stock);alert("स्टॉक से ज्यादा सामान नहीं जोड़ सकते")}
-renderCart();
-}
-function removeItem(i){cart.splice(i,1);renderCart()}
-
-async function placeOrder(){
-const name=document.getElementById("customerName").value.trim();
-const mobile=document.getElementById("customerMobile").value.trim();
-if(!name||!/^[0-9]{10}$/.test(mobile)){alert("नाम और सही 10 अंकों का मोबाइल नंबर भरें");return}
-if(!cart.length){alert("पहले सामान कार्ट में डालें");return}
-const items=cart.map(x=>({product_id:x.id,quantity:x.qty}));
-const {data,error}=await db.rpc("place_order",{
-p_customer_name:name,
-p_customer_mobile:mobile,
-p_items:items
-});
-if(error){alert("ऑर्डर नहीं हुआ: "+error.message);return}
-const total=cart.reduce((s,x)=>s+x.price*x.qty,0);
-let msg="नया ऑर्डर - Prabhat Dukaan\nनाम: "+name+"\nमोबाइल: "+mobile+"\n";
-cart.forEach(x=>msg+=x.name+" × "+x.qty+" = "+money(x.price*x.qty)+"\n");
-msg+="कुल: "+money(total);
-cart=[];
-renderCart();
-alert("ऑर्डर दर्ज हो गया। अब WhatsApp खुलेगा।");
-window.open("https://wa.me/"+WHATSAPP_NUMBER+"?text="+encodeURIComponent(msg),"_blank");
-loadProducts();
-}
-
-async function adminLogin(){
-const email=document.getElementById("adminEmail").value.trim();
-const password=document.getElementById("adminPassword").value;
-const msg=document.getElementById("loginMessage");
-if(email.toLowerCase()!==ADMIN_EMAIL){msg.textContent="यह Admin Email सही नहीं है";return}
-const {data,error}=await db.auth.signInWithPassword({email,password});
-if(error){msg.textContent="लॉगिन नहीं हुआ: "+error.message;return}
-checkAdmin();
-}
-
-async function checkAdmin(){
-const {data}=await db.auth.getSession();
-const user=data.session?.user;
-if(user&&user.email?.toLowerCase()===ADMIN_EMAIL){
-document.getElementById("loginBox").classList.add("hidden");
-document.getElementById("adminPanel").classList.remove("hidden");
-document.getElementById("adminWelcome").textContent="लॉगिन: "+user.email;
-loadAdmin();
-}else{
-document.getElementById("loginBox").classList.remove("hidden");
-document.getElementById("adminPanel").classList.add("hidden");
-}
-}
-
-async function adminLogout(){
-await db.auth.signOut();
-checkAdmin();
-}
-
-async function addProduct(){
-const name=document.getElementById("pName").value.trim();
-const mrp=Number(document.getElementById("pMrp").value);
-const price=Number(document.getElementById("pPrice").value);
-const stock=Number(document.getElementById("pStock").value);
-const image_url=document.getElementById("pImage").value.trim();
-const description=document.getElementById("pDescription").value.trim();
-const msg=document.getElementById("productMessage");
-if(!name||!mrp||!price||stock<0){msg.textContent="सभी जरूरी जानकारी सही भरें";return}
-const {error}=await db.from("products").insert([{name,mrp,price,stock,image_url,description,is_active:true}]);
-if(error){msg.textContent="सेव नहीं हुआ: "+error.message;return}
-msg.textContent="प्रोडक्ट सेव हो गया";
-["pName","pMrp","pPrice","pStock","pImage","pDescription"].forEach(id=>document.getElementById(id).value="");
-loadAdmin();
-loadProducts();
-}
-
-async function loadAdmin(){
-const pbox=document.getElementById("adminProducts");
-const obox=document.getElementById("adminOrders");
-const {data:pdata,error:pe}=await db.from("products").select("*").order("created_at",{ascending:false});
-if(pe)pbox.textContent=pe.message;
-else pbox.innerHTML=(pdata||[]).map(p=>`
-<div class="panel">
-<b>${safe(p.name)}</b> - ${money(p.price)} - स्टॉक ${p.stock}
-<button onclick="toggleProduct('${p.id}',${!p.is_active})">${p.is_active?"छिपाएँ":"दिखाएँ"}</button>
-</div>`).join("")||"कोई प्रोडक्ट नहीं";
-
-const {data:orders,error:oe}=await db.from("orders").select("*").order("created_at",{ascending:false});
-if(oe){obox.textContent="ऑर्डर लोड नहीं हुए: "+oe.message;return}
-if(!orders?.length){obox.textContent="अभी कोई ऑर्डर नहीं है";return}
-obox.innerHTML=orders.map(o=>`
-<div class="panel">
-<b>ऑर्डर #${safe(o.id)}</b>
-<p>कुल: ${money(o.total)}</p>
-<p>स्थिति: ${safe(o.status||"नया")}</p>
-<button onclick="updateStatus('${o.id}','confirmed')">स्वीकार करें</button>
-<button onclick="updateStatus('${o.id}','delivered')">डिलीवर</button>
-<button onclick="updateStatus('${o.id}','cancelled')">रद्द करें</button>
-</div>`).join("");
+ const box=el("productList");
+ const {data,error}=await db.from("products").select("*").order("created_at",{ascending:false});
+ if(error){box.textContent=error.message;return}
+ box.innerHTML=(data||[]).map(p=>`
+ <div class="item">
+ ${p.image_url?`<img class="preview" src="${safe(p.image_url)}">`:""}
+ <b>${safe(p.name)}</b><br>
+ MRP: ${rupees(p.mrp)} | बिक्री: ${rupees(p.selling_price)}<br>
+ स्टॉक: ${p.stock} | ${p.active?"दिख रहा है":"छिपा हुआ"}<br>
+ <button onclick="toggleProduct(${p.id},${!p.active})">${p.active?"दुकान से छिपाएँ":"दुकान में दिखाएँ"}</button>
+ </div>`).join("")||"अभी कोई सामान नहीं है";
 }
 
 async function toggleProduct(id,active){
-const {error}=await db.from("products").update({is_active:active}).eq("id",id);
-if(error)alert(error.message);
-loadAdmin();loadProducts();
+ const {error}=await db.from("products").update({active}).eq("id",id);
+ if(error)alert(error.message);
+ loadProducts();
 }
 
-async function updateStatus(id,status){
-const {error}=await db.from("orders").update({status}).eq("id",id);
-if(error){alert("स्थिति नहीं बदली: "+error.message);return}
-loadAdmin();
+async function loadOrders(){
+ const box=el("orderList");
+ const {data,error}=await db.from("orders").select("*").order("created_at",{ascending:false});
+ if(error){box.textContent=error.message;return}
+ box.innerHTML=(data||[]).map(o=>`
+ <div class="item">
+ <b>ऑर्डर #${safe(o.id)}</b>
+ <p>ग्राहक: ${safe(o.customer_name)}</p>
+ <p>मोबाइल: ${safe(o.customer_mobile)}</p>
+ <p>कुल: ${rupees(o.total_amount)}</p>
+ <p>स्थिति: ${safe(o.status)}</p>
+ <button onclick="setStatus(${o.id},'confirmed')">स्वीकार करें</button>
+ <button class="green" onclick="setStatus(${o.id},'delivered')">डिलीवर</button>
+ <button class="red" onclick="setStatus(${o.id},'cancelled')">रद्द करें</button>
+ </div>`).join("")||"अभी कोई ऑर्डर नहीं है";
 }
 
-db.auth.onAuthStateChange(()=>checkAdmin());
-loadProducts();
+async function setStatus(id,status){
+ const {error}=await db.from("orders").update({status}).eq("id",id);
+ if(error){alert(error.message);return}
+ loadOrders();
+}
+
+db.auth.onAuthStateChange(()=>checkLogin());
+checkLogin();
 </script>
 </body>
 </html>
