@@ -1,0 +1,13 @@
+
+{
+  "name": "Prabhat Dukaan",
+  "short_name": "Prabhat Dukaan",
+  "description": "Prabhat Telecom ki online dukaan",
+  "start_url": "./customer.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#123456",
+  "lang": "hi"
+}
