@@ -1,0 +1,276 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#102d55">
+<title>Prabhat Dukaan - Prabhat Telecom</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f5f9;color:#17243a;font-family:Arial,sans-serif}
+header{background:#102d55;color:white;text-align:center;padding:18px}
+.logo{font-size:28px;font-weight:bold;color:#f4cf79}
+header h2{margin:5px}
+main{max-width:850px;margin:auto;padding:12px}
+.card{background:white;padding:15px;border-radius:13px;margin:12px 0;box-shadow:0 2px 8px #0001}
+h3{margin-top:5px}
+input{width:100%;padding:12px;border:1px solid #ccd3df;border-radius:8px;margin:6px 0;font-size:16px}
+button{border:0;border-radius:8px;background:#145ba0;color:white;padding:11px 14px;margin:4px;font-weight:bold}
+button.green{background:#16804a}
+button:disabled{opacity:.5}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.product{background:white;border:1px solid #e3e7ee;border-radius:11px;padding:10px;min-width:0}
+.product img{width:100%;height:145px;object-fit:contain;background:#f8f9fb;border-radius:7px}
+.product h4{margin:9px 0 5px;overflow-wrap:anywhere}
+.price{font-weight:bold;color:#16804a}
+.mrp{font-size:13px;color:#777;text-decoration:line-through}
+.small{font-size:13px;color:#667085}
+.item{padding:10px 0;border-bottom:1px solid #eee}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hidden{display:none}
+#message{padding:10px;color:#145ba0}
+footer{text-align:center;padding:20px;color:#777;font-size:13px}
+@media(min-width:650px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<header>
+ <div class="logo">PT</div>
+ <h2>Prabhat Dukaan</h2>
+ <div>Prabhat Telecom</div>
+ <p>आपकी अपनी ऑनलाइन दुकान</p>
+</header>
+
+<main>
+ <div class="card">
+  <h3>हमारे प्रोडक्ट</h3>
+  <input id="search" placeholder="सामान खोजें..." oninput="showProducts()">
+  <p id="message">सामान लोड हो रहा है...</p>
+  <div class="grid" id="products"></div>
+ </div>
+
+ <div class="card">
+  <h3>🛒 आपका कार्ट</h3>
+  <div id="cart">अभी कार्ट खाली है।</div>
+  <h3 id="cartTotal">कुल: ₹0</h3>
+  <button class="green" onclick="checkout()">ऑर्डर करें</button>
+ </div>
+
+ <div class="card hidden" id="checkoutBox">
+  <h3>ऑर्डर की जानकारी</h3>
+  <input id="customerName" placeholder="आपका पूरा नाम">
+  <input id="customerMobile" type="tel" inputmode="numeric" maxlength="10" placeholder="10 अंकों का मोबाइल नंबर">
+  <button class="green" id="placeBtn" onclick="placeOrder()">ऑर्डर पक्का करें</button>
+  <p id="orderMessage"></p>
+ </div>
+
+ <div class="card">
+  <h3>📦 अपना ऑर्डर ट्रैक करें</h3>
+  <input id="trackId" type="number" placeholder="Order ID डालें">
+  <input id="trackMobile" type="tel" inputmode="numeric" maxlength="10" placeholder="ऑर्डर वाला मोबाइल नंबर">
+  <button onclick="trackOrder()">ऑर्डर की स्थिति देखें</button>
+  <div id="trackResult"></div>
+ </div>
+</main>
+
+<footer>Prabhat Telecom | Prabhat Dukaan</footer>
+
+<script>
+const SUPABASE_URL="https://zbsmdnccdpidksgavtxl.supabase.co";
+const SUPABASE_KEY="sb_publishable_jIxfhg8WH0x0XH3edKOA5Q_jAFQl1v2";
+const WHATSAPP="918858868886";
+
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let products=[];
+let cart={};
+
+const $=id=>document.getElementById(id);
+const money=n=>"₹"+Number(n||0).toFixed(2);
+
+function safe(s){
+ return String(s??"").replace(/[&<>"']/g,c=>({
+ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ }[c]));
+}
+
+async function loadProducts(){
+ $("message").textContent="सामान लोड हो रहा है...";
+ try{
+  const {data,error}=await db.from("products")
+   .select("id,name,description,image_url,mrp,selling_price,stock,active")
+   .eq("active",true)
+   .order("created_at",{ascending:false});
+  if(error)throw error;
+  products=(data||[]).filter(p=>Number(p.stock)>0);
+  showProducts();
+  $("message").textContent=products.length
+   ?"उपलब्ध सामान: "+products.length
+   :"अभी कोई सामान उपलब्ध नहीं है।";
+ }catch(e){
+  $("message").textContent="सामान लोड नहीं हुआ: "+e.message;
+ }
+}
+
+function showProducts(){
+ const term=$("search").value.trim().toLowerCase();
+ const list=products.filter(p=>
+  String(p.name).toLowerCase().includes(term)
+ );
+ $("products").innerHTML=list.map(p=>`
+  <div class="product">
+   ${p.image_url?`<img src="${safe(p.image_url)}" alt="${safe(p.name)}">`:
+   `<div style="height:145px;display:grid;place-items:center;background:#f8f9fb">फोटो उपलब्ध नहीं</div>`}
+   <h4>${safe(p.name)}</h4>
+   <div class="price">${money(p.selling_price)}</div>
+   ${Number(p.mrp)>Number(p.selling_price)?
+   `<div class="mrp">MRP ${money(p.mrp)}</div>`:""}
+   <p class="small">${safe(p.description||"")}</p>
+   <p class="small">स्टॉक: ${p.stock}</p>
+   <button onclick="addCart(${p.id})">कार्ट में डालें</button>
+  </div>
+ `).join("")||"कोई सामान नहीं मिला।";
+}
+
+function addCart(id){
+ const p=products.find(x=>String(x.id)===String(id));
+ if(!p)return;
+ const qty=cart[id]||0;
+ if(qty>=Number(p.stock)){alert("इतना स्टॉक उपलब्ध नहीं है");return;}
+ cart[id]=qty+1;
+ showCart();
+}
+
+function changeQty(id,amount){
+ const p=products.find(x=>String(x.id)===String(id));
+ if(!p)return;
+ const next=(cart[id]||0)+amount;
+ if(next<=0)delete cart[id];
+ else if(next<=Number(p.stock))cart[id]=next;
+ else alert("उपलब्ध स्टॉक से ज्यादा मात्रा नहीं ले सकते");
+ showCart();
+}
+
+function getTotal(){
+ return Object.entries(cart).reduce((sum,[id,qty])=>{
+  const p=products.find(x=>String(x.id)===String(id));
+  return sum+(p?Number(p.selling_price)*qty:0);
+ },0);
+}
+
+function showCart(){
+ const entries=Object.entries(cart);
+ if(!entries.length){
+  $("cart").textContent="अभी कार्ट खाली है।";
+ }else{
+  $("cart").innerHTML=entries.map(([id,qty])=>{
+   const p=products.find(x=>String(x.id)===String(id));
+   if(!p)return "";
+   return `<div class="item">
+    <div class="row"><b>${safe(p.name)}</b><b>${money(p.selling_price*qty)}</b></div>
+    <button onclick="changeQty(${p.id},-1)">−</button>
+    ${qty}
+    <button onclick="changeQty(${p.id},1)">+</button>
+   </div>`;
+  }).join("");
+ }
+ $("cartTotal").textContent="कुल: "+money(getTotal());
+}
+
+function checkout(){
+ if(!Object.keys(cart).length){alert("पहले सामान कार्ट में डालें");return;}
+ $("checkoutBox").classList.remove("hidden");
+ $("checkoutBox").scrollIntoView({behavior:"smooth"});
+}
+
+async function placeOrder(){
+ const name=$("customerName").value.trim();
+ const mobile=$("customerMobile").value.trim();
+ if(!name){alert("अपना नाम लिखें");return;}
+ if(!/^[0-9]{10}$/.test(mobile)){alert("सही 10 अंकों का मोबाइल नंबर लिखें");return;}
+ if(!Object.keys(cart).length){alert("कार्ट खाली है");return;}
+
+ const btn=$("placeBtn");
+ btn.disabled=true;
+ $("orderMessage").textContent="आपका ऑर्डर सेव हो रहा है...";
+ try{
+  const items=Object.entries(cart).map(([id,quantity])=>({
+   product_id:Number(id),quantity
+  }));
+  const {data,error}=await db.rpc("place_order",{
+   p_customer_name:name,
+   p_customer_mobile:mobile,
+   p_items:items
+  });
+  if(error)throw error;
+  const result=Array.isArray(data)?data[0]:data;
+  if(!result||!result.success||!result.order_id)
+   throw new Error("ऑर्डर की पुष्टि नहीं मिली।");
+
+  const orderId=result.order_id;
+  const total=Number(result.total_amount||getTotal());
+  const lines=items.map(i=>{
+   const p=products.find(x=>Number(x.id)===i.product_id);
+   return (p?p.name:"सामान")+" x "+i.quantity;
+  });
+  const msg=
+   "नया ऑर्डर - Prabhat Dukaan\n"+
+   "Order ID: "+orderId+"\n"+
+   "नाम: "+name+"\n"+
+   "मोबाइल: "+mobile+"\n"+
+   "सामान:\n"+lines.join("\n")+
+   "\nकुल: "+money(total);
+
+  $("orderMessage").innerHTML=
+   "ऑर्डर सफल! आपका Order ID है: <b>"+safe(orderId)+
+   "</b><br>कुल: "+money(total)+
+   "<br>इस ID को संभालकर रखें।<br>"+
+   `<button onclick="openWhatsApp(${JSON.stringify(msg).replace(/</g,"\\u003c")})">WhatsApp पर ऑर्डर भेजें</button>`;
+
+  cart={};
+  showCart();
+  await loadProducts();
+ }catch(e){
+  $("orderMessage").textContent="ऑर्डर नहीं हुआ: "+e.message;
+ }finally{
+  btn.disabled=false;
+ }
+}
+
+function openWhatsApp(msg){
+ const url="https://wa.me/"+WHATSAPP+"?text="+encodeURIComponent(msg);
+ window.open(url,"_blank");
+}
+
+async function trackOrder(){
+ const id=$("trackId").value.trim();
+ const mobile=$("trackMobile").value.trim();
+ if(!/^[0-9]+$/.test(id)){alert("सही Order ID डालें");return;}
+ if(!/^[0-9]{10}$/.test(mobile)){alert("सही 10 अंकों का मोबाइल नंबर डालें");return;}
+ $("trackResult").textContent="ऑर्डर खोज रहे हैं...";
+ try{
+  const {data,error}=await db.rpc("track_order",{
+   p_order_id:Number(id),
+   p_customer_mobile:mobile
+  });
+  if(error)throw error;
+  const r=Array.isArray(data)?data[0]:data;
+  if(!r||r.found===false||!r.order_id){
+   $("trackResult").textContent="ऑर्डर नहीं मिला। Order ID और मोबाइल नंबर जाँचें।";
+   return;
+  }
+  $("trackResult").innerHTML=
+   "<p><b>Order ID:</b> "+safe(r.order_id)+"</p>"+
+   "<p><b>स्थिति:</b> "+safe(r.status)+"</p>"+
+   "<p><b>कुल राशि:</b> "+money(r.total_amount)+"</p>";
+ }catch(e){
+  $("trackResult").textContent="ट्रैकिंग में समस्या: "+e.message;
+ }
+}
+
+loadProducts();
+showCart();
+</script>
+</body>
+</html>
