@@ -1,0 +1,12 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#ffffff"/>
+  <circle cx="256" cy="256" r="232" fill="white" stroke="#0755d9" stroke-width="13"/>
+  <circle cx="256" cy="256" r="216" fill="none" stroke="#f36b12" stroke-width="7"/>
+  <path d="M105 145 H270 Q340 145 340 205 Q340 265 270 265 H170 V315 H105 Z" fill="#0755d9"/>
+  <path d="M290 145 H415 L385 195 H350 V315 H290 V195 H265 Z" fill="#ff7800"/>
+  <path d="M100 270 Q250 340 420 205 Q365 340 190 345 Q110 345 100 270" fill="#0755d9" stroke="#ff7800" stroke-width="7"/>
+  <text x="256" y="385" text-anchor="middle" font-family="Arial" font-size="59" font-weight="bold" fill="#073b9c">PRABHAT</text>
+  <text x="256" y="440" text-anchor="middle" font-family="Arial" font-size="47" font-weight="bold" fill="#f36b12">TELECOM</text>
+  <text x="256" y="475" text-anchor="middle" font-family="Arial" font-size="17" font-weight="bold" fill="#073b9c">CONNECTING YOU ALWAYS</text>
+</svg>
