@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prabhat Dukaan Business & Trust Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*{box-sizing:border-box}body{font-family:Arial,sans-serif;background:#f1f4f9;margin:0;color:#17243a}
+header{background:#102d55;color:#fff;text-align:center;padding:18px}
+main{max-width:760px;margin:auto;padding:12px}
+.card{background:#fff;padding:16px;margin:12px 0;border-radius:12px;box-shadow:0 2px 8px #0000000b}
+input,textarea,select{width:100%;padding:12px;margin:6px 0;border:1px solid #bbb;border-radius:8px;font-size:16px;background:white}
+button{padding:11px 13px;background:#145ba0;color:#fff;border:0;border-radius:8px;margin:4px;cursor:pointer;font-size:14px}
+button:disabled{opacity:.5}.green{background:#16804a}.red{background:#b72d32}.orange{background:#b76a0c}.purple{background:#653a9b}.gray{background:#596579}
+.hidden{display:none!important}.item{padding:12px 0;border-bottom:1px solid #ddd;overflow-wrap:anywhere}
+img{max-width:130px;max-height:130px;display:block;margin:8px}
+.nav{display:flex;flex-wrap:wrap;gap:5px}.nav button{flex:1;min-width:125px}
+.stat{background:#edf4fb;border-radius:9px;padding:10px;margin:5px 0}
+.good{color:#16804a;font-weight:bold}.bad{color:#b72d32;font-weight:bold}
+.small{font-size:13px;color:#596579}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:130px}
+.bill-paper{background:white;color:#111;padding:22px;width:100%;max-width:720px;margin:auto}
+.bill-head{text-align:center;border-bottom:2px solid #222;padding-bottom:10px}.bill-head h2{margin:5px}
+.bill-info{margin:15px 0;line-height:1.8}.bill-table{width:100%;border-collapse:collapse;font-size:14px}
+.bill-table th,.bill-table td{border:1px solid #aaa;padding:7px;text-align:left}
+.bill-total{text-align:right;font-size:18px;font-weight:bold;margin-top:15px}
+.bill-foot{text-align:center;margin-top:25px;border-top:1px dashed #777;padding-top:12px}
+#thermalRender{position:fixed;left:-10000px;top:0;width:384px;background:white;color:black;padding:10px;font-family:Arial,sans-serif}
+#thermalRender .bill-paper{width:364px;max-width:364px;padding:5px}
+#thermalRender .bill-table{font-size:11px}#thermalRender .bill-table th,#thermalRender .bill-table td{padding:4px}
+#thermalRender .bill-info{font-size:12px;line-height:1.5}#thermalRender .bill-head h2{font-size:19px}
+#thermalRender .bill-head h3{font-size:15px}#thermalRender .bill-total{font-size:15px}#thermalRender .bill-foot{font-size:12px}
+@media print{@page{size:A4;margin:10mm}body *{visibility:hidden!important}#billArea,#billArea *{visibility:visible!important}
+#billArea{display:block!important;position:absolute;left:0;top:0;width:100%;margin:0}#billPaper{width:100%;max-width:100%;padding:5px}.no-print{display:none!important}}
+</style>
+</head>
+<body>
+<div style="text-align:center;background:#102d55;padding:16px 10px;color:white;border-radius:0 0 15px 15px">
+<img src="prabhat-telecom-logo.svg" alt="Prabhat Telecom Logo" style="width:95px;height:95px;object-fit:contain;background:white;border-radius:50%;padding:5px">
+<h2 style="margin:7px 0 3px">Prabhat Telecom</h2><p style="margin:0;font-size:13px">BUSINESS + TRUST ADMIN</p>
+</div>
+<header><h1>PT</h1><h2>Prabhat Dukaan</h2>Business & Trust Admin</header>
+<main>
+<div id="error" class="card" style="color:#b72d32"></div>
+<section id="login" class="card">
+<h3>Admin Login</h3><input id="email" type="email" value="prbhtm@gmail.com" placeholder="Email">
+<input id="password" type="password" placeholder="Password"><button id="loginBtn" onclick="loginAdmin()">Login करें</button><p id="loginMsg"></p>
+</section>
+<section id="dashboard" class="hidden">
+<div class="card"><h3>Admin Dashboard</h3><p id="welcome"></p><button onclick="loadAll()">Refresh</button><button class="red" onclick="logout()">Logout</button></div>
+<div class="card no-print"><div class="nav">
+<button onclick="showSection('productsSection')">सामान</button>
+<button onclick="showSection('ordersSection')">ऑर्डर / बिल</button>
+<button class="purple" onclick="showSection('trustSection')">ट्रस्ट / इवेंट</button><button onclick="showSection('settingsSection')">पेमेंट सेटिंग</button>
+</div></div>
+<section id="productsSection">
+<div class="card"><h3>नया सामान जोड़ें</h3>
+<input id="pname" placeholder="सामान का नाम"><div class="row"><input id="pcategory" placeholder="कैटेगरी"><input id="punit" placeholder="पैक / यूनिट (जैसे 1 पीस, 500g)"></div><div class="row"><input id="mrp" type="number" placeholder="MRP"><input id="price" type="number" placeholder="बिक्री मूल्य"><input id="stock" type="number" placeholder="स्टॉक"></div>
+<textarea id="desc" placeholder="सामान की जानकारी"></textarea><p>Gallery से फोटो चुनें</p><input id="photo" type="file" accept="image/*"><img id="preview" class="hidden">
+<button class="green" onclick="saveProduct()">सामान सेव करें</button><p id="productMsg"></p></div>
+<div class="card"><h3>प्रोडक्ट सूची</h3><div id="productList"></div></div>
+</section>
+<section id="ordersSection" class="hidden">
+<div class="card"><h3>ग्राहकों के ऑर्डर</h3><div id="orderList"></div></div>
+<div class="card"><h3>ग्राहक का बिल</h3><p id="billMsg">किसी ऑर्डर के बिल बनाएँ बटन को दबाएँ।</p>
+<div id="billActions" class="hidden no-print">
+<button class="green" onclick="downloadBillPDF()">PDF डाउनलोड</button><button onclick="shareBillPDF()">PDF शेयर</button>
+<button class="orange" onclick="shareBillWhatsApp()">WhatsApp भेजें</button><button onclick="printBillA4()">A4 प्रिंट</button>
+<button class="purple" onclick="bluetoothPrint()">Bluetooth Print 🖨️</button></div><div id="billArea" class="hidden"></div></div>
+</section>
+<section id="trustSection" class="hidden">
+<div class="card"><h3>ट्रस्ट इवेंट / सूचना जोड़ें</h3>
+<input id="eventTitle" placeholder="कार्यक्रम का नाम"><select id="eventType"><option>आगामी कार्यक्रम</option><option>सेवा कार्य</option><option>पुराना कार्यक्रम</option><option>सूचना</option></select>
+<input id="eventDate" type="date"><input id="eventPlace" placeholder="स्थान"><textarea id="eventDesc" placeholder="कार्यक्रम / सेवा का विवरण"></textarea>
+<label>इवेंट की फोटो गैलरी से चुनें</label><input id="eventImageFile" type="file" accept="image/*"><img id="eventImagePreview" class="hidden" style="max-width:150px;max-height:120px;object-fit:contain" alt="इवेंट फोटो प्रीव्यू"><button class="green" onclick="saveTrustEvent()">इवेंट सेव करें</button><p id="eventMsg"></p></div>
+<div class="card"><h3>ट्रस्ट इवेंट सूची</h3><div id="eventList"></div></div>
+<div class="card"><h3>प्रमोशन बैनर जोड़ें</h3><input id="bannerTitle" placeholder="बैनर शीर्षक"><label>बैनर फोटो गैलरी से चुनें</label><input id="bannerImageFile" type="file" accept="image/*"><img id="bannerImagePreview" class="hidden" style="max-width:180px;max-height:120px;object-fit:contain" alt="बैनर फोटो प्रीव्यू"><input id="bannerLink" type="url" placeholder="लिंक (वैकल्पिक)"><button class="green" onclick="saveBanner()">बैनर सेव करें</button><p id="bannerMsg"></p><div id="bannerList"></div></div>
+</section>
+<section id="settingsSection" class="hidden">
+<div class="card"><h3>रिटेलर पेमेंट सेटिंग</h3><input id="upiId" placeholder="UPI ID जैसे shop@upi"><input id="payeeName" placeholder="पेमेंट पाने वाले का नाम"><label>QR कोड की फोटो गैलरी से चुनें</label><input id="qrFile" type="file" accept="image/*"><img id="qrPreview" class="hidden" style="max-width:180px;max-height:180px;object-fit:contain" alt="QR कोड प्रीव्यू"><textarea id="payInstructions" placeholder="भुगतान निर्देश"></textarea><button class="green" onclick="savePaymentSettings()">सेटिंग सेव करें</button><p id="settingsMsg"></p></div>
+</section>
+</section>
+</main>
+<div id="thermalRender"></div>
+<script>
+  const SUPABASE_URL="https://zbsmdnccdpidksgavtxl.supabase.co";
+const SUPABASE_KEY="sb_publishable_jIxfhg8WH0x0XH3edKOA5Q_jAFQl1v2";
+const ADMIN_EMAIL="prbhtm@gmail.com";
+let db=null,currentBill=null,khataCustomers=[],selectedKhata=null;
+function message(id,msg){document.getElementById(id).textContent=msg}
+function money(v){return "₹"+Number(v||0).toFixed(2)}
+function escapeHTML(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function showSection(id){["productsSection","ordersSection","trustSection","settingsSection"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));if(id==="trustSection")loadTrust();if(id==="settingsSection")loadPaymentSettings()}
+try{if(!window.supabase)throw new Error("Supabase इंटरनेट से लोड नहीं हुआ।");db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);message("error","")}catch(e){message("error",e.message)}
+async function loginAdmin(){if(!db)return;const btn=document.getElementById("loginBtn");btn.disabled=true;message("loginMsg","लॉगिन हो रहा है...");try{const email=document.getElementById("email").value.trim(),password=document.getElementById("password").value;if(email.toLowerCase()!==ADMIN_EMAIL)throw new Error("Admin Email गलत है");if(!password)throw new Error("पासवर्ड डालिए");const {data,error}=await db.auth.signInWithPassword({email,password});if(error)throw error;if(data.user.email.toLowerCase()!==ADMIN_EMAIL)throw new Error("Admin अकाउंट सही नहीं है");showDashboard()}catch(e){message("loginMsg","Login Error: "+e.message)}finally{btn.disabled=false}}
+function showDashboard(){document.getElementById("login").classList.add("hidden");document.getElementById("dashboard").classList.remove("hidden");message("welcome","लॉगिन सफल: "+ADMIN_EMAIL);loadAll()}
+async function checkSession(){if(!db)return;try{const {data,error}=await db.auth.getSession();if(error)throw error;if(data.session?.user?.email?.toLowerCase()===ADMIN_EMAIL)showDashboard()}catch(e){message("error",e.message)}}
+async function logout(){await db.auth.signOut();document.getElementById("dashboard").classList.add("hidden");document.getElementById("login").classList.remove("hidden")}
+async function loadAll(){await loadProducts();await loadOrders()}
+async function uploadAdminImage(file,folder){if(!file)throw new Error("फोटो चुनें");if(!file.type.startsWith("image/"))throw new Error("केवल फोटो अपलोड करें");if(file.size>5*1024*1024)throw new Error("फोटो 5MB से छोटी रखें");const ext=(file.name.split(".").pop()||"jpg").toLowerCase();const path=folder+"/"+Date.now()+"-"+Math.random().toString(36).slice(2)+"."+ext;const {data,error}=await db.storage.from("product-images").upload(path,file,{upsert:false,contentType:file.type});if(error)throw error;return db.storage.from("product-images").getPublicUrl(data.path).data.publicUrl}
+document.getElementById("photo").addEventListener("change",e=>{const f=e.target.files[0];if(f){const p=document.getElementById("preview");p.src=URL.createObjectURL(f);p.classList.remove("hidden")}});
+document.getElementById("eventImageFile").addEventListener("change",e=>{const f=e.target.files[0];if(f){const p=document.getElementById("eventImagePreview");p.src=URL.createObjectURL(f);p.classList.remove("hidden")}});
+document.getElementById("bannerImageFile").addEventListener("change",e=>{const f=e.target.files[0];if(f){const p=document.getElementById("bannerImagePreview");p.src=URL.createObjectURL(f);p.classList.remove("hidden")}});
+document.getElementById("qrFile").addEventListener("change",e=>{const f=e.target.files[0];if(f){const p=document.getElementById("qrPreview");p.src=URL.createObjectURL(f);p.classList.remove("hidden")}});
+async function saveProduct(){try{const name=document.getElementById("pname").value.trim();if(!name)throw new Error("सामान का नाम लिखें");const file=document.getElementById("photo").files[0];let image_url=null;if(file){message("productMsg","फोटो अपलोड हो रही है...");image_url=await uploadAdminImage(file,"products")}const row={name,category:document.getElementById("pcategory").value.trim(),unit:document.getElementById("punit").value.trim(),description:document.getElementById("desc").value.trim(),mrp:Number(document.getElementById("mrp").value||0),selling_price:Number(document.getElementById("price").value||0),stock:Number(document.getElementById("stock").value||0),active:true};if(image_url)row.image_url=image_url;const {error}=await db.from("products").insert(row);if(error)throw error;message("productMsg","सामान सफलतापूर्वक सेव हो गया");["pname","pcategory","punit","desc","mrp","price","stock","photo"].forEach(id=>document.getElementById(id).value="");document.getElementById("preview").classList.add("hidden");loadProducts()}catch(e){message("productMsg","समस्या: "+e.message)}}
+async function loadProducts(){const box=document.getElementById("productList");if(!box)return;const {data,error}=await db.from("products").select("*").order("created_at",{ascending:false});if(error){box.textContent=error.message;return}box.innerHTML=(data||[]).map(p=>`<div class="item"><b>${escapeHTML(p.name)}</b> — ${money(p.selling_price)} | स्टॉक: ${Number(p.stock)||0}<br><span class="small">${escapeHTML(p.category||"")} ${escapeHTML(p.unit||"")}</span><br>${p.image_url?`<img src="${escapeHTML(p.image_url)}" alt="">`:""}<button class="${p.active?"orange":"green"}" onclick="toggleProduct(${p.id},${!p.active})">${p.active?"छिपाएँ":"दिखाएँ"}</button></div>`).join("")||"कोई सामान नहीं"}
+async function toggleProduct(id,active){const {error}=await db.from("products").update({active}).eq("id",id);if(error)alert(error.message);else loadProducts()}
+async function loadOrders(){const box=document.getElementById("orderList");if(!box)return;const {data,error}=await db.from("orders").select("*").order("created_at",{ascending:false}).limit(100);if(error){box.textContent=error.message;return}box.innerHTML=(data||[]).map(o=>`<div class="item"><b>ऑर्डर #${o.id}</b><br>${escapeHTML(o.customer_name)} | ${escapeHTML(o.customer_mobile)}<br>कुल: <b>${money(o.total_amount)}</b><br>स्थिति: ${escapeHTML(o.status||"नया")}<div class="row"><button onclick="makeBill(${o.id})">बिल बनाएँ</button><button class="green" onclick="setStatus(${o.id},'delivered')">डिलीवर</button><button class="orange" onclick="setStatus(${o.id},'processing')">प्रोसेस में</button></div><div id="paid_${o.id}" class="stat">भुगतान हिसाब लोड हो रहा है...</div><div id="history_${o.id}" class="small"></div><div class="row"><input id="pay_${o.id}" type="number" placeholder="जमा राशि"><select id="method_${o.id}"><option>Cash</option><option>UPI</option><option>Bank</option></select></div><input id="note_${o.id}" placeholder="भुगतान टिप्पणी"><button class="green" onclick="addOrderPayment(${o.id},${Number(o.total_amount)||0})">भुगतान दर्ज करें</button></div>`).join("")||"अभी कोई ऑर्डर नहीं";(data||[]).forEach(o=>loadOrderPaymentSummary(o.id,Number(o.total_amount)||0))}
+async function setStatus(id,status){const update={status};if(status==="delivered")update.delivered_at=new Date().toISOString();const {error}=await db.from("orders").update(update).eq("id",id);if(error){alert(error.message);return}loadOrders()}
+async function loadOrderPaymentSummary(id,total){const {data,error}=await db.from("order_payments").select("*").eq("order_id",id).order("paid_at",{ascending:false});if(error){const el=document.getElementById("paid_"+id);if(el)el.textContent="भुगतान टेबल समस्या: "+error.message;return}const paid=(data||[]).reduce((s,x)=>s+Number(x.amount||0),0),el=document.getElementById("paid_"+id);if(el)el.innerHTML=`जमा: <b class="good">${money(paid)}</b> | बाकी: <b class="${total-paid>0?'bad':'good'}">${money(Math.max(0,total-paid))}</b>`;const h=document.getElementById("history_"+id);if(h)h.innerHTML=(data||[]).map(x=>`${new Date(x.paid_at).toLocaleString("en-IN")} — ${money(x.amount)} (${escapeHTML(x.payment_method||"")}) ${escapeHTML(x.notes||"")}`).join("<br>")||"अभी कोई भुगतान दर्ज नहीं"}
+async function addOrderPayment(id,total){try{const amount=Number(document.getElementById("pay_"+id).value),payment_method=document.getElementById("method_"+id).value,notes=document.getElementById("note_"+id).value.trim();if(!(amount>0))throw new Error("सही भुगतान राशि डालें");const {data,error}=await db.from("order_payments").insert({order_id:id,amount,payment_method,notes}).select().single();if(error)throw error;document.getElementById("pay_"+id).value="";document.getElementById("note_"+id).value="";await loadOrderPaymentSummary(id,total);alert("भुगतान सेव हो गया।")}catch(e){alert("भुगतान समस्या: "+e.message)}}
+  function billMarkup(order,items){const date=order.created_at?new Date(order.created_at).toLocaleString("en-IN"):new Date().toLocaleString("en-IN");const rows=items.map((it,i)=>`<tr><td>${i+1}</td><td>${escapeHTML(it.product_name)}</td><td>${Number(it.quantity)||0}</td><td>${money(it.price)}</td><td>${money(Number(it.quantity)*Number(it.price))}</td></tr>`).join("");return `<div class="bill-paper" id="billPaper"><div class="bill-head"><h2>PRABHAT TELECOM</h2><h3>PRABHAT DUKAAN</h3><p>ग्राहक बिक्री बिल</p></div><div class="bill-info"><b>बिल नंबर:</b> ${order.id}<br><b>दिनांक:</b> ${escapeHTML(date)}<br><b>ग्राहक:</b> ${escapeHTML(order.customer_name)}<br><b>मोबाइल:</b> ${escapeHTML(order.customer_mobile)}</div><table class="bill-table"><thead><tr><th>क्र.</th><th>सामान</th><th>मात्रा</th><th>कीमत</th><th>कुल</th></tr></thead><tbody>${rows}</tbody></table><div class="bill-total">कुल राशि: ${money(order.total_amount)}</div><div class="bill-foot"><b>Prabhat Telecom</b><br>धन्यवाद! फिर से पधारें।</div></div>`}
+async function makeBill(orderId){try{message("billMsg","बिल तैयार हो रहा है...");document.getElementById("billArea").classList.add("hidden");document.getElementById("billActions").classList.add("hidden");const {data:order,error:oe}=await db.from("orders").select("*").eq("id",orderId).single();if(oe)throw oe;const {data:items,error:ie}=await db.from("order_items").select("*").eq("order_id",orderId);if(ie)throw ie;if(!items?.length)throw new Error("इस ऑर्डर का सामान नहीं मिला");currentBill={order,items};document.getElementById("billArea").innerHTML=billMarkup(order,items);document.getElementById("thermalRender").innerHTML=billMarkup(order,items);document.getElementById("billArea").classList.remove("hidden");document.getElementById("billActions").classList.remove("hidden");message("billMsg","बिल तैयार है। अब प्रिंट या PDF चुनें।");document.getElementById("billArea").scrollIntoView({behavior:"smooth"})}catch(e){message("billMsg","बिल समस्या: "+e.message)}}
+async function downloadBillPDF(){try{if(!currentBill)throw new Error("पहले बिल बनाएँ");await html2pdf().set({margin:5,filename:"Prabhat-Bill-"+currentBill.order.id+".pdf",image:{type:"jpeg",quality:.98},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}}).from(document.getElementById("billPaper")).save()}catch(e){alert("PDF समस्या: "+e.message)}}
+async function shareBillPDF(){try{if(!currentBill)throw new Error("पहले बिल बनाएँ");const blob=await html2pdf().set({margin:5,html2canvas:{scale:2,useCORS:true},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}}).from(document.getElementById("billPaper")).outputPdf("blob");const file=new File([blob],"Prabhat-Bill-"+currentBill.order.id+".pdf",{type:"application/pdf"});if(navigator.canShare&&navigator.canShare({files:[file]}))await navigator.share({files:[file],title:"Prabhat Telecom Bill"});else await downloadBillPDF()}catch(e){alert("PDF शेयर समस्या: "+e.message)}}
+function shareBillWhatsApp(){if(!currentBill){alert("पहले बिल बनाएँ");return}const o=currentBill.order,phone=String(o.customer_mobile||"").replace(/\D/g,""),lines=currentBill.items.map(it=>it.product_name+" x "+it.quantity+" = "+money(Number(it.price)*Number(it.quantity))),text="Prabhat Telecom - Prabhat Dukaan\nबिल नंबर: "+o.id+"\nग्राहक: "+o.customer_name+"\n"+lines.join("\n")+"\nकुल राशि: "+money(o.total_amount)+"\nधन्यवाद!";window.location.href="https://wa.me/"+(phone.startsWith("91")?phone:"91"+phone)+"?text="+encodeURIComponent(text)}
+function printBillA4(){if(!currentBill){alert("पहले बिल बनाएँ");return}window.print()}
+async function bluetoothPrint(){try{if(!currentBill)throw new Error("पहले बिल बनाएँ");if(!window.AndroidPrinter||typeof AndroidPrinter.printImage!=="function")throw new Error("Bluetooth सुविधा इस ऐप में उपलब्ध नहीं है। नया APK बनाकर इंस्टॉल करें।");if(!window.html2canvas)throw new Error("इमेज प्रिंट सुविधा लोड नहीं हुई।");message("billMsg","Bluetooth प्रिंटर के लिए बिल तैयार हो रहा है...");const canvas=await html2canvas(document.getElementById("thermalRender"),{backgroundColor:"#fff",scale:1,width:384,windowWidth:384,useCORS:true,logging:false});AndroidPrinter.printImage(canvas.toDataURL("image/png"));message("billMsg","प्रिंटर चुनने के लिए मोबाइल पर सूची देखें।")}catch(e){message("billMsg","Bluetooth समस्या: "+e.message);alert("Bluetooth Print: "+e.message)}}
+async function saveTrustEvent(){try{const file=document.getElementById("eventImageFile").files[0];message("eventMsg","फोटो अपलोड हो रही है...");const image_url=await uploadAdminImage(file,"trust-events");const row={title:document.getElementById("eventTitle").value.trim(),event_type:document.getElementById("eventType").value,event_date:document.getElementById("eventDate").value||null,place:document.getElementById("eventPlace").value.trim(),description:document.getElementById("eventDesc").value.trim(),image_url};if(!row.title)throw Error("कार्यक्रम का नाम लिखें");const {error}=await db.from("trust_events").insert(row);if(error)throw error;message("eventMsg","इवेंट और फोटो सफलतापूर्वक सेव हो गए");["eventTitle","eventDate","eventPlace","eventDesc","eventImageFile"].forEach(id=>document.getElementById(id).value="");document.getElementById("eventImagePreview").classList.add("hidden");loadTrust()}catch(e){message("eventMsg","समस्या: "+e.message)}}
+async function loadTrust(){const box=document.getElementById("eventList");if(!box)return;const {data,error}=await db.from("trust_events").select("*").order("event_date",{ascending:false});box.innerHTML=error?escapeHTML(error.message):(data||[]).map(x=>`<div class="item"><b>${escapeHTML(x.title)}</b> — ${escapeHTML(x.event_type)}<br>${escapeHTML(x.event_date||"तिथि नहीं")} | ${escapeHTML(x.place||"")}<p>${escapeHTML(x.description||"")}</p><button class="red" onclick="deleteTrustEvent(${x.id})">हटाएँ</button></div>`).join("")||"अभी कोई इवेंट नहीं"}
+async function deleteTrustEvent(id){if(!confirm("यह इवेंट हटाएँ?"))return;const {error}=await db.from("trust_events").delete().eq("id",id);if(error)alert(error.message);else loadTrust()}
+async function saveBanner(){try{const file=document.getElementById("bannerImageFile").files[0];const image_url=await uploadAdminImage(file,"promo-banners");const row={title:document.getElementById("bannerTitle").value.trim(),image_url,target_url:document.getElementById("bannerLink").value.trim()||null};if(!row.title||!row.image_url)throw Error("शीर्षक और बैनर फोटो चुनना जरूरी है");const {error}=await db.from("promo_banners").insert(row);if(error)throw error;message("bannerMsg","बैनर फोटो सहित सेव हो गया");["bannerTitle","bannerImageFile","bannerLink"].forEach(id=>document.getElementById(id).value="");document.getElementById("bannerImagePreview").classList.add("hidden");loadTrust()}catch(e){message("bannerMsg","समस्या: "+e.message)}}
+async function savePaymentSettings(){try{const file=document.getElementById("qrFile").files[0];let qr_image_url=null;if(file){message("settingsMsg","QR फोटो अपलोड हो रही है...");qr_image_url=await uploadAdminImage(file,"payment-qr")}else{const {data:oldData,error:oldError}=await db.from("store_payment_settings").select("qr_image_url").eq("id",1).maybeSingle();if(oldError)throw oldError;qr_image_url=oldData?.qr_image_url||null}const row={id:1,upi_id:document.getElementById("upiId").value.trim(),payee_name:document.getElementById("payeeName").value.trim(),qr_image_url,instructions:document.getElementById("payInstructions").value.trim()};const {error}=await db.from("store_payment_settings").upsert(row);if(error)throw error;message("settingsMsg","पेमेंट सेटिंग और QR फोटो सेव हो गई");document.getElementById("qrFile").value="";document.getElementById("qrPreview").classList.add("hidden")}catch(e){message("settingsMsg","समस्या: "+e.message)}}
+async function loadPaymentSettings(){try{const {data,error}=await db.from("store_payment_settings").select("*").eq("id",1).maybeSingle();if(error)throw error;if(data){document.getElementById("upiId").value=data.upi_id||"";document.getElementById("payeeName").value=data.payee_name||"";if(data.qr_image_url){document.getElementById("qrPreview").src=data.qr_image_url;document.getElementById("qrPreview").classList.remove("hidden");}document.getElementById("payInstructions").value=data.instructions||""}}catch(e){message("settingsMsg","सेटिंग लोड: "+e.message)}}
+checkSession();
+</script>
+</body>
+</html>
