@@ -1,5 +1,6 @@
 
 name: Build Prabhat Dukaan APK
+# Rebuild trigger: verify the debug APK artifact after app updates.
 
 on:
   push:
