@@ -379,6 +379,7 @@ ${p.image_url?`<img src="${escapeHTML(p.image_url)}">`:""}
 <button onclick="editProduct(${p.id})">बदलें</button>
 <button onclick="adjustStock(${p.id},${p.stock})">स्टॉक बदलें</button>
 <button onclick="toggleProduct(${p.id},${!p.active})">${p.active?"छिपाएँ":"दिखाएँ"}</button>
+<button class="red" onclick="removeProduct(${p.id},${JSON.stringify(p.name)})">सूची से हटाएँ</button>
 
 </div>
 
@@ -407,6 +408,14 @@ async function adjustStock(id,current){
  const {error}=await db.from("products").update({stock:Number(value)}).eq("id",id);
  if(error){alert(error.message);return}loadProducts();
 }
+async function removeProduct(id,name){
+ if(!confirm('"सामान सूची से हटाएँ?"\\n'+name+'\\n\\nपुराने ऑर्डर सुरक्षित रहेंगे।'))return;
+ const {error}=await db.from("products").update({active:false}).eq("id",id);
+ if(error){alert("हटाने में समस्या: "+error.message);return}
+ alert("सामान सूची से हटा दिया गया। पुराने ऑर्डर सुरक्षित हैं।");
+ loadProducts();
+}
+
 async function toggleProduct(id,active){
 
 const {error}=await db.from("products")
