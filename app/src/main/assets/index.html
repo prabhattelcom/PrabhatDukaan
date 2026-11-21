@@ -376,9 +376,9 @@ MRP ${money(p.mrp)} |
 
 ${p.image_url?`<img src="${escapeHTML(p.image_url)}">`:""}
 
-<button onclick="toggleProduct(${p.id},${!p.active})">
-${p.active?"छिपाएँ":"दिखाएँ"}
-</button>
+<button onclick="editProduct(${p.id})">बदलें</button>
+<button onclick="adjustStock(${p.id},${p.stock})">स्टॉक बदलें</button>
+<button onclick="toggleProduct(${p.id},${!p.active})">${p.active?"छिपाएँ":"दिखाएँ"}</button>
 
 </div>
 
@@ -386,6 +386,27 @@ ${p.active?"छिपाएँ":"दिखाएँ"}
 
 }
 
+async function editProduct(id){
+ try{
+  const {data:p,error}=await db.from("products").select("*").eq("id",id).single();
+  if(error)throw error;
+  const name=prompt("सामान का नाम",p.name); if(name===null)return;
+  const mrp=prompt("MRP",p.mrp); if(mrp===null)return;
+  const selling_price=prompt("बिक्री मूल्य",p.selling_price); if(selling_price===null)return;
+  const stock=prompt("स्टॉक",p.stock); if(stock===null)return;
+  const description=prompt("विवरण",p.description||""); if(description===null)return;
+  if(!name.trim()||Number(mrp)<=0||Number(selling_price)<=0||Number(stock)<0)throw new Error("जानकारी सही भरें");
+  const {error:updateError}=await db.from("products").update({name:name.trim(),mrp:Number(mrp),selling_price:Number(selling_price),stock:Number(stock),description}).eq("id",id);
+  if(updateError)throw updateError;
+  alert("सामान अपडेट हो गया");loadProducts();
+ }catch(e){alert("अपडेट समस्या: "+e.message)}
+}
+async function adjustStock(id,current){
+ const value=prompt("नया स्टॉक लिखें",current);if(value===null)return;
+ if(value.trim()===""||!Number.isFinite(Number(value))||Number(value)<0){alert("स्टॉक सही लिखें");return}
+ const {error}=await db.from("products").update({stock:Number(value)}).eq("id",id);
+ if(error){alert(error.message);return}loadProducts();
+}
 async function toggleProduct(id,active){
 
 const {error}=await db.from("products")
