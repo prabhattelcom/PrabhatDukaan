@@ -165,7 +165,7 @@ async function loadProducts(){
 function renderCategories(){
  const cats=["सभी",...new Set(products.map(p=>String(p.category||"").trim()).filter(Boolean))];
  if(!cats.includes(selectedCategory))selectedCategory="सभी";
- $("categoryFilters").innerHTML=cats.map(c=>'<button class="category-chip '+(c===selectedCategory?'active':'')+'" onclick="selectCategory('+JSON.stringify(c).replace(/</g,'\\u003c')+')">'+safe(c)+'</button>').join("");
+ $("categoryFilters").innerHTML=cats.map(c=>'<button class="category-chip '+(c===selectedCategory?'active':'')+'" onclick="selectCategory(decodeURIComponent(\''+encodeURIComponent(c)+'\'))">'+safe(c)+'</button>').join("");
 }
 function selectCategory(category){selectedCategory=category;showProducts()}
 function showProducts(){
