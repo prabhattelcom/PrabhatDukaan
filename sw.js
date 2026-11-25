@@ -1,5 +1,5 @@
 
-const CACHE_NAME = "prabhat-dukaan-v1";
+const CACHE_NAME = "prabhat-dukaan-v2";
 
 const FILES_TO_CACHE = [
   "./customer.html",
